@@ -9,7 +9,7 @@ use elliptic_curve::{
     ops::Reduce,
     rand_core::CryptoRngCore,
     subtle::ConditionallySelectable,
-    zeroize::{Zeroize, ZeroizeOnDrop},
+    zeroize::{Zeroize, ZeroizeOnDrop}, Group,
 };
 use sha2::{Digest, Sha256};
 use signature::{
@@ -137,7 +137,7 @@ impl SigningKey {
 impl From<NonZeroScalar> for SigningKey {
     #[inline]
     fn from(mut secret_key: NonZeroScalar) -> SigningKey {
-        let odd = (ProjectivePoint::GENERATOR * *secret_key)
+        let odd = (ProjectivePoint::generator() * *secret_key)
             .to_affine()
             .y
             .normalize()

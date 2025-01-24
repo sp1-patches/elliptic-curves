@@ -1,10 +1,13 @@
 //! A pure-Rust implementation of group operations on secp256k1.
 
+#[cfg(not(all(target_os = "zkvm", target_vendor = "succinct")))]
 pub(crate) mod affine;
 mod field;
 #[cfg(feature = "hash2curve")]
 mod hash2curve;
+#[cfg(not(all(target_os = "zkvm", target_vendor = "succinct")))]
 mod mul;
+#[cfg(not(all(target_os = "zkvm", target_vendor = "succinct")))]
 pub(crate) mod projective;
 pub(crate) mod scalar;
 
@@ -13,21 +16,30 @@ mod dev;
 
 pub use field::FieldElement;
 
+#[cfg(not(all(target_os = "zkvm", target_vendor = "succinct")))]
 use self::{affine::AffinePoint, projective::ProjectivePoint, scalar::Scalar};
+
+#[cfg(all(target_os = "zkvm", target_vendor = "succinct"))]
+pub use {
+    crate::succinct::Sp1AffinePoint as AffinePoint,
+    crate::succinct::Sp1ProjectivePoint as ProjectivePoint,
+    scalar::Scalar,
+};
+
 use crate::Secp256k1;
 use elliptic_curve::CurveArithmetic;
 
-#[cfg(not(all(feature = "alloc", target_os = "zkvm", target_vendor = "succinct")))]
+#[cfg(not(all(target_os = "zkvm", target_vendor = "succinct")))]
 impl CurveArithmetic for Secp256k1 {
     type AffinePoint = AffinePoint;
     type ProjectivePoint = ProjectivePoint;
     type Scalar = Scalar;
 }
 
-#[cfg(all(feature = "alloc", target_os = "zkvm", target_vendor = "succinct"))]
+#[cfg(all(target_os = "zkvm", target_vendor = "succinct"))]
 impl CurveArithmetic for Secp256k1 {
-    type AffinePoint = crate::succinct::Sp1AffinePoint;
-    type ProjectivePoint = crate::succinct::Sp1ProjectivePoint;
+    type AffinePoint = AffinePoint;
+    type ProjectivePoint = ProjectivePoint;
     type Scalar = Scalar;
 }
 

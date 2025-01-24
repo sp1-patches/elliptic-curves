@@ -4,7 +4,7 @@ use super::{tagged_hash, Signature, CHALLENGE_TAG};
 use crate::{AffinePoint, FieldBytes, ProjectivePoint, PublicKey, Scalar};
 use elliptic_curve::{
     bigint::U256,
-    group::prime::PrimeCurveAffine,
+    group::{prime::PrimeCurveAffine, Group},
     ops::{LinearCombination, Reduce},
     point::DecompactPoint,
 };
@@ -61,7 +61,7 @@ impl VerifyingKey {
         );
 
         let R = ProjectivePoint::lincomb(
-            &ProjectivePoint::GENERATOR,
+            &ProjectivePoint::generator(),
             s,
             &self.inner.to_projective(),
             &-e,

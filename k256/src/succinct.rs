@@ -68,6 +68,10 @@ mod affine {
                 is_infinity: 1,
             }
         }
+
+        pub(crate) fn is_identity(&self) -> Choice {
+            Choice::from(self.is_infinity)
+        }
     }
 
     impl From<Sp1AffinePoint> for Secp256k1Point {
@@ -107,22 +111,34 @@ mod affine {
         }
     }
 
-    impl DecompressPoint<Secp256k1> for Sp1AffinePoint {
-        fn decompress(x: &FieldBytes, y_is_odd: Choice) -> CtOption<Self> {
-            let point: Option<AffinePoint> = AffinePoint::decompress(x, y_is_odd).into();
-
-            // In the zkvm, were not concerned with constant time operations.
-            if let Some(point) = point {
-                return CtOption::new(Self {
-                    x: point.x,
-                    y: point.y,
-                    is_infinity: point.is_identity().unwrap_u8(),
-                }, Choice::from(1));
-            }
-
-            CtOption::new(Sp1AffinePoint::identity(), Choice::from(0))
+    impl DecompressPoint<Secp256k1> for AffinePoint {
+        fn decompress(x_bytes: &FieldBytes, y_is_odd: Choice) -> CtOption<Self> {
+            FieldElement::from_bytes(x_bytes).and_then(|x| {
+                let alpha = (x * &x * &x) + &crate::arithmetic::CURVE_EQUATION_B;
+                let beta = alpha.sqrt();
+    
+                beta.map(|beta| {
+                    let beta = beta.normalize(); // Need to normalize for is_odd() to be consistent
+                    let y = FieldElement::conditional_select(
+                        &beta.negate(1),
+                        &beta,
+                        beta.is_odd().ct_eq(&y_is_odd),
+                    );
+    
+                    Self {
+                        x, y, is_infinity: 0
+                    }
+                })
+            })
         }
     }
+
+    impl DecompactPoint<Secp256k1> for Sp1AffinePoint {
+        fn decompact(x_bytes: &FieldBytes) -> CtOption<Self> {
+            Self::decompress(x_bytes, Choice::from(0))
+        }
+    }
+    
 
     impl AffineCoordinates for Sp1AffinePoint {
         type FieldRepr = FieldBytes;
@@ -205,11 +221,21 @@ mod projective {
                 inner: Sp1AffinePoint::identity(),
             }
         }
+
+        pub(crate) fn to_affine(self) -> Sp1AffinePoint {
+            self.inner
+        }
     }
 
     impl From<Sp1AffinePoint> for Sp1ProjectivePoint {
         fn from(p: Sp1AffinePoint) -> Self {
             Sp1ProjectivePoint { inner: p }
+        }
+    }
+
+    impl From<&Sp1AffinePoint> for Sp1ProjectivePoint {
+        fn from(p: &Sp1AffinePoint) -> Self {
+            Sp1ProjectivePoint { inner: *p }
         }
     }
 
