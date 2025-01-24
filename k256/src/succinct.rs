@@ -26,6 +26,8 @@ pub use affine::Sp1AffinePoint;
 pub use projective::Sp1ProjectivePoint;
 
 mod affine {
+    use sp1_lib::utils::WeierstrassAffinePoint;
+
     use crate::{AffinePoint, EncodedPoint};
 
     use super::*;
@@ -94,6 +96,10 @@ mod affine {
 
     impl From<Secp256k1Point> for Sp1AffinePoint {
         fn from(p: Secp256k1Point) -> Self {
+            if p.is_infinity() {
+                return Sp1AffinePoint::identity();
+            }
+
             let bytes = p.to_le_bytes();
 
             let mut x_bytes: [u8; 32] = bytes[..32].try_into().unwrap();
@@ -152,52 +158,6 @@ mod affine {
             )
         }
     }
-
-
-// impl FromEncodedPoint<Secp256k1> for AffinePoint {
-//     /// Attempts to parse the given [`EncodedPoint`] as an SEC1-encoded [`AffinePoint`].
-//     ///
-//     /// # Returns
-//     ///
-//     /// `None` value if `encoded_point` is not on the secp256k1 curve.
-//     fn from_encoded_point(encoded_point: &EncodedPoint) -> CtOption<Self> {
-//         match encoded_point.coordinates() {
-//             sec1::Coordinates::Identity => CtOption::new(Self::IDENTITY, 1.into()),
-//             sec1::Coordinates::Compact { x } => Self::decompact(x),
-//             sec1::Coordinates::Compressed { x, y_is_odd } => {
-//                 AffinePoint::decompress(x, Choice::from(y_is_odd as u8))
-//             }
-//             sec1::Coordinates::Uncompressed { x, y } => {
-//                 let x = FieldElement::from_bytes(x);
-//                 let y = FieldElement::from_bytes(y);
-
-//                 x.and_then(|x| {
-//                     y.and_then(|y| {
-//                         // Check that the point is on the curve
-//                         let lhs = (y * &y).negate(1);
-//                         let rhs = x * &x * &x + &CURVE_EQUATION_B;
-//                         let point = Self::new(x, y);
-//                         CtOption::new(point, (lhs + &rhs).normalizes_to_zero())
-//                     })
-//                 })
-//             }
-//         }
-//     }
-// }
-
-// impl ToEncodedPoint<Secp256k1> for AffinePoint {
-//     fn to_encoded_point(&self, compress: bool) -> EncodedPoint {
-//         EncodedPoint::conditional_select(
-//             &EncodedPoint::from_affine_coordinates(
-//                 &self.x.to_bytes(),
-//                 &self.y.to_bytes(),
-//                 compress,
-//             ),
-//             &EncodedPoint::identity(),
-//             self.is_identity(),
-//         )
-//     }
-// }
 
     impl DecompressPoint<Secp256k1> for AffinePoint {
         fn decompress(x_bytes: &FieldBytes, y_is_odd: Choice) -> CtOption<Self> {
@@ -280,6 +240,7 @@ mod affine {
 /// So this type is purely to satisfy trait bounds.
 mod projective {
     use elliptic_curve::ops::MulByGenerator;
+    use sp1_lib::utils::WeierstrassAffinePoint;
 
     use super::*;
 
