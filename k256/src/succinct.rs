@@ -1,7 +1,7 @@
 use sp1_lib::{secp256k1::Secp256k1Point, utils::{AffinePoint as SP1AffinePointTrait, WeierstrassPoint}};
 
 use crate::{
-    arithmetic::{scalar::Scalar, FieldElement},
+    arithmetic::{scalar::Scalar, FieldElement, CURVE_EQUATION_B},
     Secp256k1,
     FieldBytes,
 };
@@ -26,7 +26,7 @@ pub use affine::Sp1AffinePoint;
 pub use projective::Sp1ProjectivePoint;
 
 mod affine {
-    use crate::AffinePoint;
+    use crate::{AffinePoint, EncodedPoint};
 
     use super::*;
 
@@ -49,7 +49,7 @@ mod affine {
     pub struct Sp1AffinePoint {
         pub(crate) x: FieldElement,
         pub(crate) y: FieldElement,
-        pub(crate) is_infinity: u8,
+        pub(crate) infinity: u8,
     }
 
     impl Sp1AffinePoint {
@@ -65,12 +65,12 @@ mod affine {
             Sp1AffinePoint {
                 x: FieldElement::ZERO,
                 y: FieldElement::ZERO,
-                is_infinity: 1,
+                infinity: 1,
             }
         }
 
         pub(crate) fn is_identity(&self) -> Choice {
-            Choice::from(self.is_infinity)
+            Choice::from(self.infinity)
         }
     }
 
@@ -106,15 +106,103 @@ mod affine {
             Sp1AffinePoint {
                 x: FieldElement::from_bytes(&x_bytes.try_into().unwrap()).unwrap(),
                 y: FieldElement::from_bytes(&y_bytes.try_into().unwrap()).unwrap(),
-                is_infinity: 0,
+                infinity: 0,
             }
         }
     }
 
+    impl FromEncodedPoint<Secp256k1> for Sp1AffinePoint {
+        fn from_encoded_point(point: &EncodedPoint) -> CtOption<Self> {
+            match point.coordinates() {
+                sec1::Coordinates::Identity => CtOption::new(Self::identity(), 1.into()),
+                sec1::Coordinates::Compact { x } => Self::decompact(x),
+                sec1::Coordinates::Compressed { x, y_is_odd } => {
+                    AffinePoint::decompress(x, Choice::from(y_is_odd as u8))
+                }
+                sec1::Coordinates::Uncompressed { x, y } => {
+                    let x = FieldElement::from_bytes(x);
+                    let y = FieldElement::from_bytes(y);
+
+                    x.and_then(|x| {
+                        y.and_then(|y| {
+                            // Check that the point is on the curve
+                            let lhs = (y * &y).negate(1);
+                            let rhs = x * &x * &x + &CURVE_EQUATION_B;
+                            let point = Self {
+                                x, y, infinity: 0
+                            };
+                            CtOption::new(point, (lhs + &rhs).normalizes_to_zero())
+                        })
+                    })
+                }
+            }
+        }
+    }
+
+    impl ToEncodedPoint<Secp256k1> for Sp1AffinePoint {
+        fn to_encoded_point(&self, compress: bool) -> EncodedPoint {
+            EncodedPoint::conditional_select(
+                &EncodedPoint::from_affine_coordinates(
+                    &self.x.to_bytes(),
+                    &self.y.to_bytes(),
+                    compress,
+                ),
+                &EncodedPoint::identity(),
+                self.is_identity(),
+            )
+        }
+    }
+
+
+// impl FromEncodedPoint<Secp256k1> for AffinePoint {
+//     /// Attempts to parse the given [`EncodedPoint`] as an SEC1-encoded [`AffinePoint`].
+//     ///
+//     /// # Returns
+//     ///
+//     /// `None` value if `encoded_point` is not on the secp256k1 curve.
+//     fn from_encoded_point(encoded_point: &EncodedPoint) -> CtOption<Self> {
+//         match encoded_point.coordinates() {
+//             sec1::Coordinates::Identity => CtOption::new(Self::IDENTITY, 1.into()),
+//             sec1::Coordinates::Compact { x } => Self::decompact(x),
+//             sec1::Coordinates::Compressed { x, y_is_odd } => {
+//                 AffinePoint::decompress(x, Choice::from(y_is_odd as u8))
+//             }
+//             sec1::Coordinates::Uncompressed { x, y } => {
+//                 let x = FieldElement::from_bytes(x);
+//                 let y = FieldElement::from_bytes(y);
+
+//                 x.and_then(|x| {
+//                     y.and_then(|y| {
+//                         // Check that the point is on the curve
+//                         let lhs = (y * &y).negate(1);
+//                         let rhs = x * &x * &x + &CURVE_EQUATION_B;
+//                         let point = Self::new(x, y);
+//                         CtOption::new(point, (lhs + &rhs).normalizes_to_zero())
+//                     })
+//                 })
+//             }
+//         }
+//     }
+// }
+
+// impl ToEncodedPoint<Secp256k1> for AffinePoint {
+//     fn to_encoded_point(&self, compress: bool) -> EncodedPoint {
+//         EncodedPoint::conditional_select(
+//             &EncodedPoint::from_affine_coordinates(
+//                 &self.x.to_bytes(),
+//                 &self.y.to_bytes(),
+//                 compress,
+//             ),
+//             &EncodedPoint::identity(),
+//             self.is_identity(),
+//         )
+//     }
+// }
+
     impl DecompressPoint<Secp256k1> for AffinePoint {
         fn decompress(x_bytes: &FieldBytes, y_is_odd: Choice) -> CtOption<Self> {
             FieldElement::from_bytes(x_bytes).and_then(|x| {
-                let alpha = (x * &x * &x) + &crate::arithmetic::CURVE_EQUATION_B;
+                let alpha = (x * &x * &x) + &CURVE_EQUATION_B;
                 let beta = alpha.sqrt();
     
                 beta.map(|beta| {
@@ -126,7 +214,7 @@ mod affine {
                     );
     
                     Self {
-                        x, y, is_infinity: 0
+                        x, y, infinity: 0
                     }
                 })
             })
@@ -157,7 +245,7 @@ mod affine {
             Sp1AffinePoint {
                 x: FieldElement::conditional_select(&a.x, &b.x, choice),
                 y: FieldElement::conditional_select(&a.y, &b.y, choice),
-                is_infinity: u8::conditional_select(&a.is_infinity, &b.is_infinity, choice),
+                infinity: u8::conditional_select(&a.infinity, &b.infinity, choice),
             }
         }
     }
@@ -166,7 +254,7 @@ mod affine {
         fn ct_eq(&self, other: &Self) -> Choice {
             self.x.ct_eq(&other.x)
                 & self.y.ct_eq(&other.y)
-                & self.is_infinity.ct_eq(&other.is_infinity)
+                & self.infinity.ct_eq(&other.infinity)
         }
     }
 
@@ -267,7 +355,7 @@ mod projective {
         }
 
         fn is_identity(&self) -> Choice {
-            self.inner.is_infinity.into()
+            self.inner.infinity.into()
         }
     }
 
@@ -305,7 +393,7 @@ mod projective {
                 inner: Sp1AffinePoint {
                     x: self.inner.x,
                     y: -self.inner.y,
-                    is_infinity: self.inner.is_infinity,
+                    infinity: self.inner.infinity,
                 },
             }
         }
