@@ -17,9 +17,17 @@ use self::{affine::AffinePoint, projective::ProjectivePoint, scalar::Scalar};
 use crate::Secp256k1;
 use elliptic_curve::CurveArithmetic;
 
+#[cfg(not(all(feature = "alloc", target_os = "zkvm", target_vendor = "succinct")))]
 impl CurveArithmetic for Secp256k1 {
     type AffinePoint = AffinePoint;
     type ProjectivePoint = ProjectivePoint;
+    type Scalar = Scalar;
+}
+
+#[cfg(all(feature = "alloc", target_os = "zkvm", target_vendor = "succinct"))]
+impl CurveArithmetic for Secp256k1 {
+    type AffinePoint = crate::succinct::Sp1AffinePoint;
+    type ProjectivePoint = crate::succinct::Sp1ProjectivePoint;
     type Scalar = Scalar;
 }
 

@@ -157,3 +157,7 @@ impl elliptic_curve::sec1::ValidatePublicKey for Secp256k1 {}
 /// Bit representation of a secp256k1 (K-256) scalar field element.
 #[cfg(feature = "bits")]
 pub type ScalarBits = elliptic_curve::scalar::ScalarBits<Secp256k1>;
+
+/// Succinct implementation of secp256k1 types for the zkvm.
+#[cfg(all(feature = "alloc", target_os = "zkvm", target_vendor = "succinct"))]
+pub mod succinct;
