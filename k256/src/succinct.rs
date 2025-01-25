@@ -10,12 +10,11 @@ use core::{ops::{Mul, Neg, Add, Sub, MulAssign, AddAssign, SubAssign}, iter::Sum
 use core::convert::From;
 use elliptic_curve::{
     ops::LinearCombination,
-    group::{prime::PrimeCurveAffine, Curve, Group, GroupEncoding},
+    group::{Curve, Group},
     point::{AffineCoordinates, DecompactPoint, DecompressPoint},
     sec1::{self, FromEncodedPoint, ToEncodedPoint},
     subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption},
     zeroize::DefaultIsZeroes,
-    Error, Result,
     rand_core::RngCore,
     ff::Field,
 };
@@ -26,6 +25,7 @@ pub use affine::Sp1AffinePoint;
 pub use projective::Sp1ProjectivePoint;
 
 mod affine {
+    use elliptic_curve::bigint::ArrayDecoding;
     use sp1_lib::utils::WeierstrassAffinePoint;
 
     use crate::{AffinePoint, EncodedPoint};
@@ -47,73 +47,75 @@ mod affine {
     // + Send
     // + Sync;
 
-    #[derive(Clone, Copy, Debug)]
+    #[derive(Clone, Copy)]
     pub struct Sp1AffinePoint {
-        pub(crate) x: FieldElement,
-        pub(crate) y: FieldElement,
-        pub(crate) infinity: u8,
+        pub(crate) point: Secp256k1Point
+    }
+
+    impl core::fmt::Debug for Sp1AffinePoint {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            write!(f, "Sp1AffinePoint {{ point }}")
+        }
     }
 
     impl Sp1AffinePoint {
-        pub(super) fn as_zkvm_point(&self) -> Secp256k1Point {
-            <Secp256k1Point as From<Sp1AffinePoint>>::from(self.clone())
-        }
+        pub(super) fn from_field_elements_unchecked(x: FieldElement, y: FieldElement) -> Self {
+            let mut x_slice = x.to_bytes();
+            let x_slice = x_slice.as_mut_slice();
+            x_slice.reverse();
 
-        pub(super) fn generator() -> Self {
-            Sp1AffinePoint::from(Secp256k1Point(WeierstrassPoint::Affine(Secp256k1Point::GENERATOR)))
-        }
+            let mut y_slice = y.to_bytes();
+            let y_slice = y_slice.as_mut_slice();
+            y_slice.reverse();
 
-        pub(super) const fn identity() -> Self {
             Sp1AffinePoint {
-                x: FieldElement::ZERO,
-                y: FieldElement::ZERO,
-                infinity: 1,
+                point: <Secp256k1Point as SP1AffinePointTrait<16>>::from(&x_slice, &y_slice)
             }
         }
 
-        pub(crate) fn is_identity(&self) -> Choice {
-            Choice::from(self.infinity)
-        }
-    }
-
-    impl From<Sp1AffinePoint> for Secp256k1Point {
-        fn from(p: Sp1AffinePoint) -> Self {
-            let mut bytes = [0u8; 64];
-
-            // Returns the bytes in BE format.
-            let mut x_bytes = p.x.to_bytes().as_slice().to_vec();
-            x_bytes.reverse();
-
-            let mut y_bytes = p.y.to_bytes().as_slice().to_vec();
-            y_bytes.reverse();
-
-            bytes[..32].copy_from_slice(&x_bytes);
-            bytes[32..].copy_from_slice(&y_bytes);
-
-            Secp256k1Point::from_le_bytes(&bytes)
-        }
-    }
-
-    impl From<Secp256k1Point> for Sp1AffinePoint {
-        fn from(p: Secp256k1Point) -> Self {
-            if p.is_infinity() {
-                return Sp1AffinePoint::identity();
-            }
-
-            let bytes = p.to_le_bytes();
-
+        /// # Panics 
+        /// - if the point is the identity point.
+        /// - if we have non canon represntations of the field elements.
+        pub(crate) fn field_elements(&self) -> (FieldElement, FieldElement) {
+            let bytes = self.point.to_le_bytes();
+            
             let mut x_bytes: [u8; 32] = bytes[..32].try_into().unwrap();
             x_bytes.reverse();
 
             let mut y_bytes: [u8; 32] = bytes[32..].try_into().unwrap();
             y_bytes.reverse();
 
-            // Needs to be in BE format.
+            let x = FieldElement::from_bytes(&x_bytes.try_into().unwrap()).unwrap();
+            let y = FieldElement::from_bytes(&y_bytes.try_into().unwrap()).unwrap();
+            (x, y)
+        }
+
+        pub(super) const fn generator() -> Self {
             Sp1AffinePoint {
-                x: FieldElement::from_bytes(&x_bytes.try_into().unwrap()).unwrap(),
-                y: FieldElement::from_bytes(&y_bytes.try_into().unwrap()).unwrap(),
-                infinity: 0,
+                point: Secp256k1Point(WeierstrassPoint::Affine(Secp256k1Point::GENERATOR)),
             }
+        }
+
+        pub(super) const fn identity() -> Self {
+            Sp1AffinePoint {
+                point: Secp256k1Point(WeierstrassPoint::Infinity),
+            }
+        }
+
+        pub(crate) fn is_identity(&self) -> Choice {
+            Choice::from(self.point.is_infinity() as u8)
+        }
+    }
+
+    impl From<Sp1AffinePoint> for Secp256k1Point {
+        fn from(p: Sp1AffinePoint) -> Self {
+            p.point
+        }
+    }
+
+    impl From<Secp256k1Point> for Sp1AffinePoint {
+        fn from(p: Secp256k1Point) -> Self {
+            Sp1AffinePoint { point: p }
         }
     }
 
@@ -134,9 +136,7 @@ mod affine {
                             // Check that the point is on the curve
                             let lhs = (y * &y).negate(1);
                             let rhs = x * &x * &x + &CURVE_EQUATION_B;
-                            let point = Self {
-                                x, y, infinity: 0
-                            };
+                            let point = Self::from_field_elements_unchecked(x, y);
                             CtOption::new(point, (lhs + &rhs).normalizes_to_zero())
                         })
                     })
@@ -147,15 +147,14 @@ mod affine {
 
     impl ToEncodedPoint<Secp256k1> for Sp1AffinePoint {
         fn to_encoded_point(&self, compress: bool) -> EncodedPoint {
-            EncodedPoint::conditional_select(
-                &EncodedPoint::from_affine_coordinates(
-                    &self.x.to_bytes(),
-                    &self.y.to_bytes(),
-                    compress,
-                ),
-                &EncodedPoint::identity(),
-                self.is_identity(),
-            )
+            // If the point is the identity point, we can just return the identity point.
+            if self.is_identity().into() {
+                return EncodedPoint::identity();
+            }
+
+            let (x, y) = self.field_elements();
+
+            EncodedPoint::from_affine_coordinates(&x.to_bytes(), &y.to_bytes(), compress)
         }
     }
 
@@ -173,9 +172,7 @@ mod affine {
                         beta.is_odd().ct_eq(&y_is_odd),
                     );
     
-                    Self {
-                        x, y, infinity: 0
-                    }
+                    Sp1AffinePoint::from_field_elements_unchecked(x, y)
                 })
             })
         }
@@ -192,29 +189,49 @@ mod affine {
         type FieldRepr = FieldBytes;
 
         fn x(&self) -> FieldBytes {
-            self.x.to_bytes()
+            if self.is_identity().into() {
+                return FieldElement::ZERO.to_bytes();
+            }
+
+            let (x, _) = self.field_elements();
+
+            x.to_bytes()
         }
 
         fn y_is_odd(&self) -> Choice {
-            Choice::from(self.y.is_odd())
+            if self.is_identity().into() {
+                return Choice::from(0);
+            }
+
+            let (_, y) = self.field_elements();
+
+            Choice::from(y.is_odd())
         }
     }
 
     impl ConditionallySelectable for Sp1AffinePoint {
         fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-            Sp1AffinePoint {
-                x: FieldElement::conditional_select(&a.x, &b.x, choice),
-                y: FieldElement::conditional_select(&a.y, &b.y, choice),
-                infinity: u8::conditional_select(&a.infinity, &b.infinity, choice),
+            // In the vm, we dont care about constant time selection.
+            if choice.into() {
+                *b
+            } else {
+                *a
             }
         }
     }
 
     impl ConstantTimeEq for Sp1AffinePoint {
         fn ct_eq(&self, other: &Self) -> Choice {
-            self.x.ct_eq(&other.x)
-                & self.y.ct_eq(&other.y)
-                & self.infinity.ct_eq(&other.infinity)
+            // In the zkvm, we dont care about constant time equality.
+            if self.is_identity().into() {
+                if other.is_identity().into() {
+                    return Choice::from(1);
+                } else {
+                    return Choice::from(0);
+                }
+            }
+
+            self.point.limbs_ref().ct_eq(other.point.limbs_ref())
         }
     }
 
@@ -240,7 +257,6 @@ mod affine {
 /// So this type is purely to satisfy trait bounds.
 mod projective {
     use elliptic_curve::ops::MulByGenerator;
-    use sp1_lib::utils::WeierstrassAffinePoint;
 
     use super::*;
 
@@ -273,6 +289,10 @@ mod projective {
 
         pub(crate) fn to_affine(self) -> Sp1AffinePoint {
             self.inner
+        }
+
+        fn to_zkvm_point(&self) -> Secp256k1Point {
+            self.inner.point
         }
     }
 
@@ -316,7 +336,7 @@ mod projective {
         }
 
         fn is_identity(&self) -> Choice {
-            self.inner.infinity.into()
+            self.inner.is_identity()
         }
     }
 
@@ -332,8 +352,8 @@ mod projective {
 
     impl LinearCombination for Sp1ProjectivePoint {
         fn lincomb(x: &Self, k: &Self::Scalar, y: &Self, l: &Self::Scalar) -> Self {
-            let x = x.inner.as_zkvm_point();
-            let y = y.inner.as_zkvm_point();
+            let x = x.to_zkvm_point();
+            let y = y.to_zkvm_point();
 
             let a_bits_le = be_bytes_to_le_bits(&k.to_bytes().as_slice().try_into().unwrap());
             let b_bits_le = be_bytes_to_le_bits(&l.to_bytes().as_slice().try_into().unwrap());
@@ -350,13 +370,14 @@ mod projective {
         type Output = Sp1ProjectivePoint;
 
         fn neg(self) -> Self::Output {
-            Self {
-                inner: Sp1AffinePoint {
-                    x: self.inner.x,
-                    y: -self.inner.y,
-                    infinity: self.inner.infinity,
-                },
+            if self.is_identity().into() {
+                return self;
             }
+
+            let point = self.to_affine();
+            let (x, y) = point.field_elements();
+
+            Sp1AffinePoint::from_field_elements_unchecked(x, y.negate(1)).into()
         }
     }
 
@@ -364,9 +385,9 @@ mod projective {
         type Output = Sp1ProjectivePoint;
 
         fn add(self, rhs: Sp1ProjectivePoint) -> Self::Output {
-            let mut sp1_point = self.inner.as_zkvm_point();
+            let mut sp1_point = self.to_zkvm_point();
             
-            sp1_point.add_assign(&rhs.inner.as_zkvm_point());
+            sp1_point.add_assign(&rhs.to_zkvm_point());
 
             Sp1ProjectivePoint {
                 inner: Sp1AffinePoint::from(sp1_point),
@@ -386,9 +407,9 @@ mod projective {
         type Output = Sp1ProjectivePoint;
 
         fn add(self, rhs: &Sp1ProjectivePoint) -> Self::Output {
-            let mut sp1_point = self.inner.as_zkvm_point();
+            let mut sp1_point = self.to_zkvm_point();
             
-            sp1_point.add_assign(&rhs.inner.as_zkvm_point());
+            sp1_point.add_assign(&rhs.to_zkvm_point());
 
             Sp1ProjectivePoint {
                 inner: Sp1AffinePoint::from(sp1_point),
@@ -408,7 +429,7 @@ mod projective {
         type Output = Sp1ProjectivePoint;
 
         fn mul(self, rhs: Scalar) -> Self::Output {
-            let mut sp1_point = self.inner.as_zkvm_point();
+            let mut sp1_point = self.to_zkvm_point();
             let scalar_bytes_be = rhs.to_bytes().as_slice().to_vec();
 
             sp1_point.mul_assign(&be_bytes_to_le_words(scalar_bytes_be));
@@ -423,7 +444,7 @@ mod projective {
         type Output = Sp1ProjectivePoint;
 
         fn mul(self, rhs: &Scalar) -> Self::Output {
-            let mut sp1_point = self.inner.as_zkvm_point();
+            let mut sp1_point = self.to_zkvm_point();
             let scalar_bytes_be = rhs.to_bytes().as_slice().to_vec();
 
             sp1_point.mul_assign(&be_bytes_to_le_words(scalar_bytes_be));

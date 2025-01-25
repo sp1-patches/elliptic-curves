@@ -101,9 +101,12 @@ impl SigningKey {
             *a ^= b
         }
 
+        let affine = self.verifying_key.as_affine();
+        let (x, _) = affine.field_elements();
+
         let rand = tagged_hash(NONCE_TAG)
             .chain_update(t)
-            .chain_update(self.verifying_key.as_affine().x.to_bytes())
+            .chain_update(x.to_bytes())
             .chain_update(msg)
             .finalize();
 
@@ -113,7 +116,9 @@ impl SigningKey {
 
         let secret_key = k.secret_key;
         let verifying_point = AffinePoint::from(k.verifying_key);
-        let r = verifying_point.x.normalize();
+        
+        let (x, _) = verifying_point.field_elements();
+        let r = x.normalize();
 
         let e = <Scalar as Reduce<U256>>::reduce_bytes(
             &tagged_hash(CHALLENGE_TAG)
@@ -137,9 +142,11 @@ impl SigningKey {
 impl From<NonZeroScalar> for SigningKey {
     #[inline]
     fn from(mut secret_key: NonZeroScalar) -> SigningKey {
-        let odd = (ProjectivePoint::generator() * *secret_key)
-            .to_affine()
-            .y
+        let point = ProjectivePoint::generator() * *secret_key;
+        let affine = point.to_affine();
+        let (_, y) = affine.field_elements();
+
+        let odd = y
             .normalize()
             .is_odd();
 
