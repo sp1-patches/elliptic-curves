@@ -25,7 +25,6 @@ pub use affine::Sp1AffinePoint;
 pub use projective::Sp1ProjectivePoint;
 
 mod affine {
-    use elliptic_curve::bigint::ArrayDecoding;
     use sp1_lib::utils::WeierstrassAffinePoint;
 
     use crate::{AffinePoint, EncodedPoint};
@@ -291,7 +290,7 @@ mod projective {
             self.inner
         }
 
-        fn to_zkvm_point(&self) -> Secp256k1Point {
+        fn zkvm_point(&self) -> Secp256k1Point {
             self.inner.point
         }
     }
@@ -299,6 +298,12 @@ mod projective {
     impl From<Sp1AffinePoint> for Sp1ProjectivePoint {
         fn from(p: Sp1AffinePoint) -> Self {
             Sp1ProjectivePoint { inner: p }
+        }
+    }
+
+    impl From<Secp256k1Point> for Sp1ProjectivePoint {
+        fn from(p: Secp256k1Point) -> Self {
+            Sp1ProjectivePoint { inner: Sp1AffinePoint::from(p) }
         }
     }
 
@@ -352,8 +357,8 @@ mod projective {
 
     impl LinearCombination for Sp1ProjectivePoint {
         fn lincomb(x: &Self, k: &Self::Scalar, y: &Self, l: &Self::Scalar) -> Self {
-            let x = x.to_zkvm_point();
-            let y = y.to_zkvm_point();
+            let x = x.zkvm_point();
+            let y = y.zkvm_point();
 
             let a_bits_le = be_bytes_to_le_bits(&k.to_bytes().as_slice().try_into().unwrap());
             let b_bits_le = be_bytes_to_le_bits(&l.to_bytes().as_slice().try_into().unwrap());
@@ -385,13 +390,11 @@ mod projective {
         type Output = Sp1ProjectivePoint;
 
         fn add(self, rhs: Sp1ProjectivePoint) -> Self::Output {
-            let mut sp1_point = self.to_zkvm_point();
+            let mut sp1_point = self.zkvm_point();
             
-            sp1_point.add_assign(&rhs.to_zkvm_point());
+            sp1_point.add_assign(&rhs.zkvm_point());
 
-            Sp1ProjectivePoint {
-                inner: Sp1AffinePoint::from(sp1_point),
-            }
+            sp1_point.into()
         }
     }
 
@@ -407,13 +410,11 @@ mod projective {
         type Output = Sp1ProjectivePoint;
 
         fn add(self, rhs: &Sp1ProjectivePoint) -> Self::Output {
-            let mut sp1_point = self.to_zkvm_point();
+            let mut sp1_point = self.zkvm_point();
             
-            sp1_point.add_assign(&rhs.to_zkvm_point());
+            sp1_point.add_assign(&rhs.zkvm_point());
 
-            Sp1ProjectivePoint {
-                inner: Sp1AffinePoint::from(sp1_point),
-            }
+            sp1_point.into()
         }
     }
 
@@ -429,14 +430,12 @@ mod projective {
         type Output = Sp1ProjectivePoint;
 
         fn mul(self, rhs: Scalar) -> Self::Output {
-            let mut sp1_point = self.to_zkvm_point();
+            let mut sp1_point = self.zkvm_point();
             let mut scalar_bytes_be = rhs.to_bytes();
 
             sp1_point.mul_assign(&be_bytes_to_le_words(scalar_bytes_be.as_mut_slice()));
 
-            Sp1ProjectivePoint {
-                inner: Sp1AffinePoint::from(sp1_point),
-            }
+            sp1_point.into()
         }
     }
 
@@ -444,14 +443,12 @@ mod projective {
         type Output = Sp1ProjectivePoint;
 
         fn mul(self, rhs: &Scalar) -> Self::Output {
-            let mut sp1_point = self.to_zkvm_point();
+            let mut sp1_point = self.zkvm_point();
             let mut scalar_bytes_be = rhs.to_bytes();
             
             sp1_point.mul_assign(&be_bytes_to_le_words(scalar_bytes_be.as_mut_slice()));
 
-            Sp1ProjectivePoint {
-                inner: Sp1AffinePoint::from(sp1_point),
-            }
+            sp1_point.into()
         }
     }
 
@@ -621,7 +618,7 @@ pub(crate) fn call_sqrt_hook(x: &[u8], modulus: &[u8], nqr: &[u8]) -> SqrtReturn
 }
 
 #[inline]
-fn be_bytes_to_le_words(mut bytes: &mut [u8]) -> [u32; 16] {
+fn be_bytes_to_le_words(bytes: &mut [u8]) -> [u32; 16] {
     bytes.reverse();
 
     bytes
