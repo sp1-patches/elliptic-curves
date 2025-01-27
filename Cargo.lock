@@ -634,6 +634,7 @@ dependencies = [
  "ecdsa",
  "elliptic-curve",
  "getrandom",
+ "hex",
  "hex-literal",
  "num-bigint",
  "num-traits",
@@ -1344,8 +1345,7 @@ dependencies = [
 [[package]]
 name = "sp1-lib"
 version = "4.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aac3d3deeed25e9cad80e4275faf5954aa63f213ed3422f0e098dd2d0c1b0c0e"
+source = "git+https://github.com/succinctlabs/sp1.git?branch=n/fp_ops_hook#131b9781ce2ff3ef4b5f38bc448a003ced77f865"
 dependencies = [
  "bincode",
  "serde",
@@ -1355,8 +1355,7 @@ dependencies = [
 [[package]]
 name = "sp1-primitives"
 version = "4.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09b25a09b455dfae9c688da05718b205e8bd4afab36cd912d54639f5d4035815"
+source = "git+https://github.com/succinctlabs/sp1.git?branch=n/fp_ops_hook#131b9781ce2ff3ef4b5f38bc448a003ced77f865"
 dependencies = [
  "bincode",
  "hex",

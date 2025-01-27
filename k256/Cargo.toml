@@ -31,6 +31,7 @@ signature = { version = "2", optional = true }
 
 [target.'cfg(all(target_os = "zkvm", target_vendor = "succinct"))'.dependencies]
 sp1-lib = "4.0.0"
+hex = "=0.4"
 # TODO(n): remove this for release
 getrandom = { version = "0.2.8", features = ["custom"] }
 

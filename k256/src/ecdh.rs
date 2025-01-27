@@ -48,6 +48,8 @@ pub type SharedSecret = elliptic_curve::ecdh::SharedSecret<Secp256k1>;
 
 impl From<&AffinePoint> for SharedSecret {
     fn from(affine: &AffinePoint) -> SharedSecret {
-        affine.x.to_bytes().into()
+        let (x, _) = affine.field_elements();
+
+        x.to_bytes().into()
     }
 }

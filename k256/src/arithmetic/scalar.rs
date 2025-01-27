@@ -125,6 +125,7 @@ impl Scalar {
     }
 
     /// Inverts the scalar.
+    #[cfg(not(target_os = "zkvm"))]
     pub fn invert(&self) -> CtOption<Self> {
         // Using an addition chain from
         // https://briansmith.org/ecc-inversion-addition-chains-01#secp256k1_scalar_inversion
@@ -173,6 +174,22 @@ impl Scalar {
             .pow2k(8).mul(&x6);
 
         CtOption::new(res, !self.is_zero())
+    }
+
+    #[cfg(target_os = "zkvm")]
+    pub fn invert(&self) -> CtOption<Self> {
+        if self.is_zero().into() {
+            return CtOption::new(Self::ZERO, 0.into());
+        }
+
+        let result = crate::succinct::call_inv_hook(self.to_bytes().as_slice(), Self::MODULUS);
+        let result = FieldBytes::from_slice(result.as_slice());
+        let result = Self::from_repr(*result).unwrap();
+
+        CtOption::new(
+            result, 
+            (result * *self).ct_eq(&Self::ONE)
+        )
     }
 
     /// Returns the scalar modulus as a `BigUint` object.
@@ -254,6 +271,7 @@ impl Field for Scalar {
     /// Tonelli-Shank's algorithm for q mod 16 = 1
     /// <https://eprint.iacr.org/2012/685.pdf> (page 12, algorithm 5)
     #[allow(clippy::many_single_char_names)]
+    #[cfg(not(target_os = "zkvm"))]
     fn sqrt(&self) -> CtOption<Self> {
         // Note: `pow_vartime` is constant-time with respect to `self`
         let w = self.pow_vartime([
@@ -291,6 +309,32 @@ impl Field for Scalar {
         }
 
         CtOption::new(x, x.square().ct_eq(self))
+    }
+
+    #[cfg(target_os = "zkvm")]
+    fn sqrt(&self) -> CtOption<Self> {
+        #[allow(non_snake_case)]
+        let NQR: Scalar = Scalar::from_u128(5);
+
+        let (status, result) = crate::succinct::call_sqrt_hook(self.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
+        let result = FieldBytes::from_slice(result.as_slice());
+        let result = Self::from_repr(*result).unwrap();
+
+        match status {
+            0 => {
+                let has_root = self * &NQR;
+
+                assert!(result * result == has_root, "Sqrt hook returned invalid hint, NQR root didnt match.");
+
+                CtOption::new(result, 0.into())
+            }
+            1 => {
+                assert!(result * result == *self, "Sqrt hook returned invalid hint, sqrt is invalid.");
+
+                CtOption::new(result, 1.into())
+            }
+            _ => unreachable!(),
+        }
     }
 
     fn sqrt_ratio(num: &Self, div: &Self) -> (Choice, Self) {

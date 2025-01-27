@@ -135,12 +135,20 @@ impl MapToCurve for FieldElement {
         let (rx, ry) = self.osswu();
         let (qx, qy) = FieldElement::isogeny(rx, ry);
 
-        AffinePoint {
-            x: qx,
-            y: qy,
-            infinity: 0,
+        #[cfg(target_os = "zkvm")]
+        {
+            AffinePoint::from_field_elements_unchecked(qx, qy).into()
         }
-        .into()
+
+        #[cfg(not(target_os = "zkvm"))]
+        {
+            AffinePoint {
+                x: qx,
+                y: qy,
+                infinity: 0,
+            }
+            .into()
+        }
     }
 }
 

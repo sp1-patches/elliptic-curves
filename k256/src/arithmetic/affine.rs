@@ -80,6 +80,10 @@ impl AffinePoint {
     pub(crate) const fn new(x: FieldElement, y: FieldElement) -> Self {
         Self { x, y, infinity: 0 }
     }
+
+    pub(crate) fn field_elements(&self) -> (FieldElement, FieldElement) {
+        (self.x, self.y)
+    }
 }
 
 impl PrimeCurveAffine for AffinePoint {

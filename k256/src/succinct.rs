@@ -4,13 +4,14 @@ use crate::{
     arithmetic::{scalar::Scalar, FieldElement, CURVE_EQUATION_B},
     Secp256k1,
     FieldBytes,
+    CompressedPoint,
 };
 // use crate::{CompressedPoint, EncodedPoint, FieldBytes, PublicKey, Scalar};
 use core::{ops::{Mul, Neg, Add, Sub, MulAssign, AddAssign, SubAssign}, iter::Sum};
 use core::convert::From;
 use elliptic_curve::{
     ops::LinearCombination,
-    group::{Curve, Group},
+    group::{Curve, Group, GroupEncoding},
     point::{AffineCoordinates, DecompactPoint, DecompressPoint},
     sec1::{self, FromEncodedPoint, ToEncodedPoint},
     subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption},
@@ -58,7 +59,7 @@ mod affine {
     }
 
     impl Sp1AffinePoint {
-        pub(super) fn from_field_elements_unchecked(x: FieldElement, y: FieldElement) -> Self {
+        pub(crate) fn from_field_elements_unchecked(x: FieldElement, y: FieldElement) -> Self {
             let mut x_slice = x.to_bytes();
             let x_slice = x_slice.as_mut_slice();
             x_slice.reverse();
@@ -192,20 +193,12 @@ mod affine {
         type FieldRepr = FieldBytes;
 
         fn x(&self) -> FieldBytes {
-            if self.is_identity().into() {
-                return FieldElement::ZERO.to_bytes();
-            }
-
             let (x, _) = self.field_elements();
 
             x.to_bytes()
         }
 
         fn y_is_odd(&self) -> Choice {
-            if self.is_identity().into() {
-                return Choice::from(0);
-            }
-
             let (_, y) = self.field_elements();
 
             Choice::from(y.is_odd())
@@ -249,13 +242,41 @@ mod affine {
     }
 
     impl DefaultIsZeroes for Sp1AffinePoint {}
+
+    impl GroupEncoding for AffinePoint {
+        type Repr = CompressedPoint;
+    
+        fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
+            EncodedPoint::from_bytes(bytes)
+                .map(|point| CtOption::new(point, Choice::from(1)))
+                .unwrap_or_else(|_| {
+                    // SEC1 identity encoding is technically 1-byte 0x00, but the
+                    // `GroupEncoding` API requires a fixed-width `Repr`
+                    let is_identity = bytes.ct_eq(&Self::Repr::default());
+                    CtOption::new(EncodedPoint::identity(), is_identity)
+                })
+                .and_then(|point| Self::from_encoded_point(&point))
+        }
+    
+        fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
+            // No unchecked conversion possible for compressed points
+            Self::from_bytes(bytes)
+        }
+    
+        fn to_bytes(&self) -> Self::Repr {
+            let encoded = self.to_encoded_point(true);
+            let mut result = CompressedPoint::default();
+            result[..encoded.len()].copy_from_slice(encoded.as_bytes());
+            result
+        }
+    }
 }
 
 /// In our case, we actually only care about affine points.
 ///
 /// So this type is purely to satisfy trait bounds.
 mod projective {
-    use elliptic_curve::ops::MulByGenerator;
+    use elliptic_curve::{group::{cofactor::CofactorGroup, prime::PrimeGroup}, ops::MulByGenerator};
 
     use super::*;
 
@@ -587,20 +608,26 @@ mod projective {
     }
 
     impl Eq for Sp1ProjectivePoint {}
-}
 
-/// WARNING: The values in this type are UNTRUSTED.
-///
-/// The values must be constrained by the caller, by either checking the sqrt is correct and canon,
-/// or checking the NQR property.
-pub(crate) enum SqrtReturn {
-    /// The square root was found, this is the bytes in BE.
-    Found(Vec<u8>),
+    // Traits for hash2curve
+    impl GroupEncoding for Sp1ProjectivePoint {
+        type Repr = CompressedPoint;
+    
+        fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
+            <Sp1AffinePoint as GroupEncoding>::from_bytes(bytes).map(Into::into)
+        }
+    
+        fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
+            // No unchecked conversion possible for compressed points
+            Self::from_bytes(bytes)
+        }
+    
+        fn to_bytes(&self) -> Self::Repr {
+            self.inner.to_bytes()
+        }
+    }
 
-    /// The square root was not found.
-    /// This is instead the square root of the product of
-    /// a non-quadratic residue and the original value.
-    NotFound(Vec<u8>),
+    impl PrimeGroup for Sp1ProjectivePoint {}
 }
 
 /// Call the sp1 sqrt hook.
@@ -613,8 +640,37 @@ pub(crate) enum SqrtReturn {
 /// - `x`: The field element to square root.
 /// - `modulus`: The modulus to square root with respect to.
 /// - `nqr`: The non-quadratic residue wrt the modulus.
-pub(crate) fn call_sqrt_hook(x: &[u8], modulus: &[u8], nqr: &[u8]) -> SqrtReturn {
-    todo!()
+pub(crate) fn call_sqrt_hook(x: &[u8], modulus: &'static str, nqr: &[u8]) -> (u8, Vec<u8>) {
+    let mut buf = Vec::new();
+    buf.extend_from_slice(&32_u32.to_be_bytes());
+    buf.extend_from_slice(x);
+    buf.extend_from_slice(&hex::decode(modulus).unwrap());
+    buf.extend_from_slice(nqr);
+
+    sp1_lib::unconstrained! {
+        sp1_lib::io::write(
+            sp1_lib::io::FD_FP_SQRT,
+            buf.as_slice()
+        );
+    }
+
+    let status: u8 = sp1_lib::io::read_vec().first().copied().expect("sqrt hook should have a status");
+    let result = sp1_lib::io::read_vec();
+
+    (status, result)
+}
+
+pub(crate) fn call_inv_hook(x: &[u8], modulus: &'static str) -> Vec<u8> {
+    let mut buf = Vec::new();
+    buf.extend_from_slice(&32_u32.to_be_bytes());
+    buf.extend_from_slice(x);
+    buf.extend_from_slice(&hex::decode(modulus).unwrap());
+
+    sp1_lib::unconstrained! {
+        sp1_lib::io::write(sp1_lib::io::FD_FP_INV, buf.as_slice());
+    }
+
+    sp1_lib::io::read_vec()
 }
 
 #[inline]
