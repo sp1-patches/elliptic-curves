@@ -77,6 +77,10 @@ mod affine {
         /// - if the point is the identity point.
         /// - if we have non canon represntations of the field elements.
         pub(crate) fn field_elements(&self) -> (FieldElement, FieldElement) {
+            if self.is_identity().into() {
+                return (FieldElement::ZERO, FieldElement::ZERO);
+            }
+
             let bytes = self.point.to_le_bytes();
             
             let mut x_bytes: [u8; 32] = bytes[..32].try_into().unwrap();
@@ -223,12 +227,8 @@ mod affine {
     impl ConstantTimeEq for Sp1AffinePoint {
         fn ct_eq(&self, other: &Self) -> Choice {
             // In the zkvm, we dont care about constant time equality.
-            if self.is_identity().into() {
-                if other.is_identity().into() {
-                    return Choice::from(1);
-                } else {
-                    return Choice::from(0);
-                }
+            if self.is_identity().into() && other.is_identity().into() {
+                return Choice::from(1);
             }
 
             self.point.limbs_ref().ct_eq(other.point.limbs_ref())
@@ -430,9 +430,9 @@ mod projective {
 
         fn mul(self, rhs: Scalar) -> Self::Output {
             let mut sp1_point = self.to_zkvm_point();
-            let scalar_bytes_be = rhs.to_bytes().as_slice().to_vec();
+            let mut scalar_bytes_be = rhs.to_bytes();
 
-            sp1_point.mul_assign(&be_bytes_to_le_words(scalar_bytes_be));
+            sp1_point.mul_assign(&be_bytes_to_le_words(scalar_bytes_be.as_mut_slice()));
 
             Sp1ProjectivePoint {
                 inner: Sp1AffinePoint::from(sp1_point),
@@ -445,9 +445,9 @@ mod projective {
 
         fn mul(self, rhs: &Scalar) -> Self::Output {
             let mut sp1_point = self.to_zkvm_point();
-            let scalar_bytes_be = rhs.to_bytes().as_slice().to_vec();
-
-            sp1_point.mul_assign(&be_bytes_to_le_words(scalar_bytes_be));
+            let mut scalar_bytes_be = rhs.to_bytes();
+            
+            sp1_point.mul_assign(&be_bytes_to_le_words(scalar_bytes_be.as_mut_slice()));
 
             Sp1ProjectivePoint {
                 inner: Sp1AffinePoint::from(sp1_point),
@@ -469,25 +469,25 @@ mod projective {
 
     impl MulAssign<Scalar> for Sp1ProjectivePoint {
         fn mul_assign(&mut self, rhs: Scalar) {
-            *self = self.mul(rhs);
+            self.inner.point.mul_assign(&be_bytes_to_le_words(rhs.to_bytes().as_mut_slice()));
         }
     }
 
     impl MulAssign<&Scalar> for Sp1ProjectivePoint {
         fn mul_assign(&mut self, rhs: &Scalar) {
-            *self = self.mul(rhs);
+            self.inner.point.mul_assign(&be_bytes_to_le_words(rhs.to_bytes().as_mut_slice()));
         }
     }
 
     impl AddAssign<Sp1ProjectivePoint> for Sp1ProjectivePoint {
         fn add_assign(&mut self, rhs: Sp1ProjectivePoint) {
-            *self = self.add(rhs);
+            self.inner.point.add_assign(&rhs.inner.point);
         }
     }
-
+        
     impl AddAssign<&Sp1ProjectivePoint> for Sp1ProjectivePoint {
         fn add_assign(&mut self, rhs: &Sp1ProjectivePoint) {
-            *self = self.add(rhs);
+            self.inner.point.add_assign(&rhs.inner.point);
         }
     }
 
@@ -545,13 +545,13 @@ mod projective {
 
     impl AddAssign<Sp1AffinePoint> for Sp1ProjectivePoint {
         fn add_assign(&mut self, rhs: Sp1AffinePoint) {
-            *self = self.add(rhs);
+            self.inner.point.add_assign(&rhs.point);
         }
     }
 
     impl AddAssign<&Sp1AffinePoint> for Sp1ProjectivePoint {
         fn add_assign(&mut self, rhs: &Sp1AffinePoint) {
-            *self = self.add(rhs);
+            self.inner.point.add_assign(&rhs.point);
         }
     }
 
@@ -621,7 +621,7 @@ pub(crate) fn call_sqrt_hook(x: &[u8], modulus: &[u8], nqr: &[u8]) -> SqrtReturn
 }
 
 #[inline]
-fn be_bytes_to_le_words(mut bytes: Vec<u8>) -> [u32; 16] {
+fn be_bytes_to_le_words(mut bytes: &mut [u8]) -> [u32; 16] {
     bytes.reverse();
 
     bytes

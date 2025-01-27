@@ -33,10 +33,6 @@ impl VerifyingKey {
     /// Serialize as bytes.
     pub fn to_bytes(&self) -> FieldBytes {
         let affine = self.as_affine();
-        if affine.is_identity().into() {
-            return FieldElement::ZERO.to_bytes();
-        }
-
         let (x, _) = affine.field_elements();
 
         x.to_bytes()
@@ -156,11 +152,6 @@ impl TryFrom<PublicKey> for VerifyingKey {
 
     fn try_from(public_key: PublicKey) -> Result<VerifyingKey> {
         let affine = public_key.as_affine();
-        // deviates from original implementation todo
-        if affine.is_identity().into() {
-            return Err(Error::new());
-        }
-
         let (_, y) = affine.field_elements();
 
         if y.normalize().is_even().into() {
