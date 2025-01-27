@@ -159,5 +159,8 @@ impl elliptic_curve::sec1::ValidatePublicKey for Secp256k1 {}
 pub type ScalarBits = elliptic_curve::scalar::ScalarBits<Secp256k1>;
 
 /// Succinct implementation of secp256k1 types for the zkvm.
-#[cfg(all(feature = "alloc", target_os = "zkvm", target_vendor = "succinct"))]
+#[cfg(all(feature = "alloc", target_os = "zkvm"))]
 pub mod succinct;
+
+#[cfg(all(not(feature = "alloc"), target_os = "zkvm"))]
+compile_error!("zkvm requires the `alloc` feature");
