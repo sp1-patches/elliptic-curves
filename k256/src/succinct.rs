@@ -25,27 +25,13 @@ use alloc::vec::Vec;
 pub use affine::Sp1AffinePoint;
 pub use projective::Sp1ProjectivePoint;
 
+#[allow(missing_docs)]
 mod affine {
     use sp1_lib::utils::WeierstrassAffinePoint;
 
     use crate::{AffinePoint, EncodedPoint};
 
     use super::*;
-
-    /// Elliptic curve point in affine coordinates.
-    // type AffinePoint: 'static
-    // + AffineCoordinates<FieldRepr = FieldBytes<Self>>
-    // + Copy
-    // + ConditionallySelectable
-    // + ConstantTimeEq
-    // + Debug
-    // + Default
-    // + DefaultIsZeroes
-    // + Eq
-    // + PartialEq
-    // + Sized
-    // + Send
-    // + Sync;
 
     #[derive(Clone, Copy)]
     pub struct Sp1AffinePoint {
@@ -280,17 +266,6 @@ mod projective {
     use elliptic_curve::{group::prime::PrimeGroup, ops::MulByGenerator};
 
     use super::*;
-
-    // type ProjectivePoint: ConditionallySelectable
-    // + ConstantTimeEq
-    // + Default
-    // + DefaultIsZeroes
-    // + From<Self::AffinePoint>
-    // + Into<Self::AffinePoint>
-    // + LinearCombination
-    // + MulByGenerator
-    // + group::Curve<AffineRepr = Self::AffinePoint>
-    // + group::Group<Scalar = Self::Scalar>;
 
     /// While the underlying `RustCrypto` algorithm uses projective points, we need
     /// affine points for our syscalls.
@@ -661,6 +636,12 @@ pub(crate) fn call_sqrt_hook(x: &[u8], modulus: &'static str, nqr: &[u8]) -> (u8
     (status, result)
 }
 
+/// Call the sp1 inverse hook.
+///
+/// This hook takes in a field element and returns the inverse of the element (with respect to the modulus).
+///
+/// - `x`: The field element to inverse.
+/// - `modulus`: The modulus to inverse with respect to.
 pub(crate) fn call_inv_hook(x: &[u8], modulus: &'static str) -> Vec<u8> {
     let mut buf = Vec::new();
     buf.extend_from_slice(&32_u32.to_be_bytes());
