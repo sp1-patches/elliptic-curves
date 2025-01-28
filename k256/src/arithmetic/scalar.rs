@@ -175,7 +175,8 @@ impl Scalar {
 
         CtOption::new(res, !self.is_zero())
     }
-
+    
+    /// Compute the inverse using the SP1 Hook.
     #[cfg(target_os = "zkvm")]
     pub fn invert(&self) -> CtOption<Self> {
         if self.is_zero().into() {
@@ -315,6 +316,10 @@ impl Field for Scalar {
 
     #[cfg(target_os = "zkvm")]
     fn sqrt(&self) -> CtOption<Self> {
+        if self.is_zero().into() {
+            return CtOption::new(Self::ZERO, 1.into());
+        }
+
         #[allow(non_snake_case)]
         let NQR: Scalar = Scalar::from_u128(5);
 

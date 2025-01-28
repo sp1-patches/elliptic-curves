@@ -244,6 +244,10 @@ impl FieldElement {
 
     #[cfg(target_os = "zkvm")]
     pub fn sqrt(&self) -> CtOption<Self> {
+        if self.is_zero().into() {
+            return CtOption::new(Self::ZERO, 1.into());
+        }
+
         /// 3 is a NQR of the secp256k1 base field.
         const NQR: FieldElement = FieldElement::from_u64(3);
 
@@ -254,6 +258,7 @@ impl FieldElement {
         match status {
             0 => {
                 let has_root = self * &NQR;
+                
                 assert!(result * result == has_root, "Sqrt hook returned invalid hint, NQR root didnt match.");
 
                 CtOption::new(result, 0.into())

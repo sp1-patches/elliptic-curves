@@ -176,7 +176,7 @@ mod affine {
                         beta.is_odd().ct_eq(&y_is_odd),
                     );
     
-                    Sp1AffinePoint::from_field_elements_unchecked(x, y)
+                    Sp1AffinePoint::from_field_elements_unchecked(x, y.normalize())
                 })
             })
         }
@@ -201,7 +201,7 @@ mod affine {
         fn y_is_odd(&self) -> Choice {
             let (_, y) = self.field_elements();
 
-            Choice::from(y.is_odd())
+            Choice::from(y.normalize().is_odd())
         }
     }
 
@@ -218,12 +218,13 @@ mod affine {
 
     impl ConstantTimeEq for Sp1AffinePoint {
         fn ct_eq(&self, other: &Self) -> Choice {
-            // In the zkvm, we dont care about constant time equality.
-            if self.is_identity().into() && other.is_identity().into() {
-                return Choice::from(1);
-            }
+            let (x1, y1) = self.field_elements();
+            let (x1, y1) = (x1.normalize(), y1.normalize());
 
-            self.point.limbs_ref().ct_eq(other.point.limbs_ref())
+            let (x2, y2) = other.field_elements();
+            let (x2, y2) = (x2.normalize(), y2.normalize());
+
+            x1.ct_eq(&x2) & y1.ct_eq(&y2)   
         }
     }
 
@@ -276,7 +277,7 @@ mod affine {
 ///
 /// So this type is purely to satisfy trait bounds.
 mod projective {
-    use elliptic_curve::{group::{cofactor::CofactorGroup, prime::PrimeGroup}, ops::MulByGenerator};
+    use elliptic_curve::{group::prime::PrimeGroup, ops::MulByGenerator};
 
     use super::*;
 
@@ -403,7 +404,7 @@ mod projective {
             let point = self.to_affine();
             let (x, y) = point.field_elements();
 
-            Sp1AffinePoint::from_field_elements_unchecked(x, y.negate(1)).into()
+            Sp1AffinePoint::from_field_elements_unchecked(x, y.negate(1).normalize()).into()
         }
     }
 
