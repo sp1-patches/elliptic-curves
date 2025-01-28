@@ -186,9 +186,11 @@ impl Scalar {
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Self::from_repr(*result).unwrap();
 
+        assert!(result * *self == Self::ONE, "Inverse hook returned invalid hint, inverse is invalid.");
+
         CtOption::new(
             result, 
-            (result * *self).ct_eq(&Self::ONE)
+            Choice::from(1)
         )
     }
 
