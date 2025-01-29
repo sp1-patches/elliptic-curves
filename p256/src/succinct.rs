@@ -134,8 +134,10 @@ mod affine {
                         y.and_then(|y| {
                             // Check that the point is on the curve
                             let lhs = (y * &y).neg();
-                            let rhs = EQUATION_A * (&x * &x * &x) + &EQUATION_B;
+                            let rhs = (&x * &x * &x) + (EQUATION_A * &x) + &EQUATION_B;
+
                             let point = Self::from_field_elements_unchecked(x, y);
+
                             CtOption::new(point, (lhs + &rhs).is_zero())
                         })
                     })
@@ -160,7 +162,7 @@ mod affine {
     impl DecompressPoint<NistP256> for Sp1AffinePoint {
         fn decompress(x_bytes: &FieldBytes, y_is_odd: Choice) -> CtOption<Self> {
             FieldElement::from_bytes(x_bytes).and_then(|x| {
-                let alpha = EQUATION_A * (x * &x * &x) + &EQUATION_B;
+                let alpha =  (x * &x * &x) + (EQUATION_A * &x) + &EQUATION_B;
                 let beta = alpha.sqrt();
     
                 beta.map(|beta| {

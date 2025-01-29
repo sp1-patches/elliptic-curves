@@ -131,6 +131,10 @@ impl FieldElement {
 
     #[cfg(target_os = "zkvm")]
     pub fn sqrt(&self) -> CtOption<Self> {
+        if self.is_zero().into() {
+            return CtOption::new(FieldElement::ZERO, Choice::from(1));
+        }
+
         // 3 is a non-quadratic residue for p256 basefield
         #[allow(non_snake_case)]
         let NQR: FieldElement = FieldElement::from_u64(3);

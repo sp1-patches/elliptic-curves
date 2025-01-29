@@ -297,6 +297,10 @@ impl Field for Scalar {
 
     #[cfg(target_os = "zkvm")]
     fn sqrt(&self) -> CtOption<Self> {
+        if self.is_zero().into() {
+            return CtOption::new(Self::ZERO, Choice::from(1));
+        }
+
         // 7 is a non-quadratic residue for p256 scalar field.
         #[allow(non_snake_case)]
         let NQR: Scalar = Scalar::from_u128(7);
