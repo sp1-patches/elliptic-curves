@@ -15,11 +15,33 @@ use crate::NistP256;
 use elliptic_curve::{CurveArithmetic, PrimeCurveArithmetic};
 use primeorder::{point_arithmetic, PrimeCurveParams};
 
-/// Elliptic curve point in affine coordinates.
-pub type AffinePoint = primeorder::AffinePoint<NistP256>;
+#[cfg(not(target_os = "zkvm"))]
+mod native_types {
+    /// Elliptic curve point in affine coordinates.
+    pub type AffinePoint = primeorder::AffinePoint<NistP256>;
 
-/// Elliptic curve point in projective coordinates.
-pub type ProjectivePoint = primeorder::ProjectivePoint<NistP256>;
+    /// Elliptic curve point in projective coordinates.
+    pub type ProjectivePoint = primeorder::ProjectivePoint<NistP256>;
+}
+
+#[cfg(not(target_os = "zkvm"))]
+pub use native_types::*;
+
+#[cfg(target_os = "zkvm")]
+mod succinct_types {
+    /// Elliptic curve point in affine coordinates.
+    ///
+    /// For use inside the SP1 zkvm.
+    pub type AffinePoint = crate::succinct::Sp1AffinePoint;
+
+    /// Elliptic curve point in projective coordinates.
+    /// 
+    /// For use inside the SP1 zkvm.
+    pub type ProjectivePoint = crate::succinct::Sp1ProjectivePoint;
+}
+
+#[cfg(target_os = "zkvm")]
+pub use succinct_types::*;
 
 impl CurveArithmetic for NistP256 {
     type AffinePoint = AffinePoint;
@@ -27,6 +49,7 @@ impl CurveArithmetic for NistP256 {
     type Scalar = Scalar;
 }
 
+#[cfg(not(target_os = "zkvm"))]
 impl PrimeCurveArithmetic for NistP256 {
     type CurveGroup = ProjectivePoint;
 }
@@ -34,6 +57,7 @@ impl PrimeCurveArithmetic for NistP256 {
 /// Adapted from [NIST SP 800-186] § G.1.2: Curve P-256.
 ///
 /// [NIST SP 800-186]: https://csrc.nist.gov/publications/detail/sp/800-186/final
+#[cfg(not(target_os = "zkvm"))]
 impl PrimeCurveParams for NistP256 {
     type FieldElement = FieldElement;
     type PointArithmetic = point_arithmetic::EquationAIsMinusThree;

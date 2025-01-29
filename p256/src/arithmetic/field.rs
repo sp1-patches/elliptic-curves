@@ -55,8 +55,24 @@ primeorder::impl_mont_field_element!(
 
 impl FieldElement {
     /// Returns the multiplicative inverse of self, if self is non-zero.
+    #[cfg(not(target_os = "zkvm"))]
     pub fn invert(&self) -> CtOption<Self> {
         CtOption::new(self.invert_unchecked(), !self.is_zero())
+    }
+
+    #[cfg(target_os = "zkvm")]
+    pub fn invert(&self) -> CtOption<Self> {
+        if self.is_zero().into() {
+            return CtOption::new(FieldElement::ZERO, Choice::from(0));
+        }
+
+        let res = crate::succinct::call_inv_hook(self.to_bytes().as_slice(), &MODULUS_HEX);
+        let result = FieldBytes::from_slice(res.as_slice());
+        let result = FieldElement::from_repr(*result).unwrap();
+
+        assert!((&result * self) == FieldElement::ONE, "Inv hook returned invalid hint, inv is invalid.");
+
+        CtOption::new(result, Choice::from(1))
     }
 
     /// Returns the multiplicative inverse of self.
@@ -84,6 +100,7 @@ impl FieldElement {
     }
 
     /// Returns the square root of self mod p, or `None` if no square root exists.
+    #[cfg(not(target_os = "zkvm"))]
     pub fn sqrt(&self) -> CtOption<Self> {
         // We need to find alpha such that alpha^2 = beta mod p. For secp256r1,
         // p ≡ 3 mod 4. By Euler's Criterion, beta^(p-1)/2 ≡ 1 mod p. So:
@@ -110,6 +127,26 @@ impl FieldElement {
             sqrt,
             (&sqrt * &sqrt).ct_eq(self), // Only return Some if it's the square root.
         )
+    }
+
+    #[cfg(target_os = "zkvm")]
+    pub fn sqrt(&self) -> CtOption<Self> {
+        // 3 is a non-quadratic residue for p256 basefield
+        #[allow(non_snake_case)]
+        let NQR: FieldElement = FieldElement::from_u64(3);
+
+        let (status, res) = crate::succinct::call_sqrt_hook(self.to_bytes().as_slice(), &MODULUS_HEX, NQR.to_bytes().as_slice());
+
+        let result = FieldBytes::from_slice(res.as_slice());
+        let result = FieldElement::from_repr(*result).unwrap();
+
+        if status == 0 {
+            assert!((&result * &result) == self * &NQR, "Sqrt hook returned invalid hint, NQR root didnt match.");
+        } else {
+            assert!((&result * &result) == *self, "Sqrt hook returned invalid hint, sqrt is invalid.");
+        }
+
+        CtOption::new(result, Choice::from(status))
     }
 
     /// Returns self^(2^n) mod p

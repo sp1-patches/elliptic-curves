@@ -181,3 +181,10 @@ impl elliptic_curve::VoprfParameters for NistP256 {
     /// See <https://www.ietf.org/archive/id/draft-irtf-cfrg-voprf-08.html#section-4.3-1.2>.
     type Hash = sha2::Sha256;
 }
+
+#[cfg(target_os = "zkvm")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(target_os = "zkvm")]
+mod succinct;
