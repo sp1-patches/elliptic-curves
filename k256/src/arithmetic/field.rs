@@ -255,21 +255,13 @@ impl FieldElement {
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Self::from_repr(*result).unwrap();
 
-        match status {
-            0 => {
-                let has_root = self * &NQR;
-                
-                assert!(result * result == has_root, "Sqrt hook returned invalid hint, NQR root didnt match.");
-
-                CtOption::new(result, 0.into())
-            },
-            1 => {
-                assert!(result * result == *self, "Sqrt hook returned invalid hint, sqrt is invalid.");
-
-                CtOption::new(result, 1.into())
-            },
-            _ => unreachable!(),
+        if status == 0 {
+            assert!(result * result == self * &NQR, "Sqrt hook returned invalid hint, NQR root didnt match.");
+        } else {
+            assert!(result * result == *self, "Sqrt hook returned invalid hint, sqrt is invalid.");
         }
+
+        CtOption::new(result, Choice::from(status))
     }
 
     #[cfg(target_os = "zkvm")]
