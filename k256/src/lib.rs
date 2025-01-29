@@ -27,7 +27,7 @@
 //!
 //! Please see type-specific documentation for more information.
 
-#[cfg(feature = "alloc")]
+#[cfg(any(feature = "alloc", target_os = "zkvm"))]
 #[allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
@@ -159,8 +159,8 @@ impl elliptic_curve::sec1::ValidatePublicKey for Secp256k1 {}
 pub type ScalarBits = elliptic_curve::scalar::ScalarBits<Secp256k1>;
 
 /// Succinct implementation of secp256k1 types for the zkvm.
-#[cfg(all(feature = "alloc", target_os = "zkvm"))]
+#[cfg(target_os = "zkvm")]
 pub mod succinct;
 
-#[cfg(all(not(feature = "alloc"), target_os = "zkvm"))]
-compile_error!("zkvm requires the `alloc` feature");
+#[cfg(all(target_os = "zkvm", not(target_vendor = "succinct")))]
+compile_error!("attempting to compile Succincts k256 patch for non-succinct targets");

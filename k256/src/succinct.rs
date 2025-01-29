@@ -357,8 +357,8 @@ mod projective {
             let x = x.zkvm_point();
             let y = y.zkvm_point();
 
-            let a_bits_le = be_bytes_to_le_bits(&k.to_bytes().as_slice().try_into().unwrap());
-            let b_bits_le = be_bytes_to_le_bits(&l.to_bytes().as_slice().try_into().unwrap());
+            let a_bits_le = be_bytes_to_le_bits(&k.to_bytes().as_slice());
+            let b_bits_le = be_bytes_to_le_bits(&l.to_bytes().as_slice());
 
             let sp1_point = Secp256k1Point::multi_scalar_multiplication(&a_bits_le, x, &b_bits_le, y);
 
@@ -655,6 +655,7 @@ pub(crate) fn call_inv_hook(x: &[u8], modulus: &'static str) -> Vec<u8> {
     sp1_lib::io::read_vec()
 }
 
+/// Panics if the bytes are not 32 bytes long.
 #[inline]
 fn be_bytes_to_le_words(bytes: &mut [u8]) -> [u32; 16] {
     bytes.reverse();
@@ -669,7 +670,7 @@ fn be_bytes_to_le_words(bytes: &mut [u8]) -> [u32; 16] {
 
 /// Convert big-endian bytes with the most significant bit first to little-endian bytes with the least significant bit first.
 #[inline]
-fn be_bytes_to_le_bits(be_bytes: &[u8; 32]) -> [bool; 256] {
+fn be_bytes_to_le_bits(be_bytes: &[u8]) -> [bool; 256] {
     let mut bits = [false; 256];
     // Reverse the byte order to little-endian.
     for (i, &byte) in be_bytes.iter().rev().enumerate() {
