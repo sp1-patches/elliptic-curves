@@ -60,8 +60,7 @@ mod affine {
         }
 
         /// # Panics 
-        /// - if the point is the identity point.
-        /// - if we have non canon represntations of the field elements.
+        /// - if we have non canon representations of the field elements.
         pub(crate) fn field_elements(&self) -> (FieldElement, FieldElement) {
             if self.is_identity().into() {
                 return (FieldElement::ZERO, FieldElement::ZERO);

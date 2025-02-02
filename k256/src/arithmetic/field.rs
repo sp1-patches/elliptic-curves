@@ -244,21 +244,22 @@ impl FieldElement {
 
     #[cfg(target_os = "zkvm")]
     pub fn sqrt(&self) -> CtOption<Self> {
-        if self.is_zero().into() {
+        let value = self.normalize();
+        if value.is_zero().into() {
             return CtOption::new(Self::ZERO, 1.into());
         }
 
         /// 3 is a NQR of the secp256k1 base field.
         const NQR: FieldElement = FieldElement::from_u64(3);
 
-        let (status, result) = crate::succinct::call_sqrt_hook(self.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
+        let (status, result) = crate::succinct::call_sqrt_hook(value.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Self::from_repr(*result).unwrap();
 
         if status == 0 {
-            assert!(result * result == self * &NQR, "Sqrt hook returned invalid hint, NQR root didnt match.");
+            assert!(((result * result).negate(1) + value * &NQR).normalizes_to_zero().unwrap_u8() == 1, "Sqrt hook returned invalid hint, NQR root didnt match.");
         } else {
-            assert!(result * result == *self, "Sqrt hook returned invalid hint, sqrt is invalid.");
+            assert!(((result * result).negate(1) + value).normalizes_to_zero().unwrap_u8() == 1, "Sqrt hook returned invalid hint, sqrt is invalid.");
         }
 
         CtOption::new(result, Choice::from(status))
@@ -266,7 +267,8 @@ impl FieldElement {
 
     #[cfg(target_os = "zkvm")]
     pub fn invert(&self) -> CtOption<Self> {
-        if self.is_zero().into() {
+        let value = self.normalize();
+        if value.is_zero().into() {
             return CtOption::new(Self::ZERO, 0.into());
         }
 
@@ -274,7 +276,7 @@ impl FieldElement {
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Self::from_repr(*result).unwrap();
 
-        assert!(result * *self == Self::ONE, "Inv hook returned invalid hint, invert is invalid.");
+        assert!(((result * value).negate(1) + Self::ONE).normalizes_to_zero().unwrap_u8() == 1, "Inv hook returned invalid hint, invert is invalid.");
 
         CtOption::new(result, 1.into())
     }
