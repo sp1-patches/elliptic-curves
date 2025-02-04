@@ -11,7 +11,7 @@ use crate::{FieldBytes, NistP256};
 use core::{
     fmt::{self, Debug},
     iter::{Product, Sum},
-    ops::{AddAssign, Mul, MulAssign, Neg, SubAssign},
+    ops::{AddAssign, MulAssign, Neg, SubAssign},
 };
 use elliptic_curve::{
     bigint::U256,
@@ -66,7 +66,7 @@ impl FieldElement {
             return CtOption::new(FieldElement::ZERO, Choice::from(0));
         }
 
-        let res = crate::succinct::call_inv_hook(self.to_bytes().as_slice(), &MODULUS_HEX);
+        let res = crate::call_inv_hook(self.to_bytes().as_slice(), &MODULUS_HEX);
         let result = FieldBytes::from_slice(res.as_slice());
         let result = FieldElement::from_repr(*result).unwrap();
 
@@ -139,7 +139,7 @@ impl FieldElement {
         #[allow(non_snake_case)]
         let NQR: FieldElement = FieldElement::from_u64(3);
 
-        let (status, res) = crate::succinct::call_sqrt_hook(self.to_bytes().as_slice(), &MODULUS_HEX, NQR.to_bytes().as_slice());
+        let (status, res) = crate::call_sqrt_hook(self.to_bytes().as_slice(), &MODULUS_HEX, NQR.to_bytes().as_slice());
 
         let result = FieldBytes::from_slice(res.as_slice());
         let result = FieldElement::from_repr(*result).unwrap();

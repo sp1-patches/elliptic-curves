@@ -25,7 +25,7 @@ use elliptic_curve::{
     Curve, ScalarPrimitive,
 };
 
-#[cfg(feature = "bits")]
+#[cfg(all(not(target_os = "zkvm"), feature = "bits"))]
 use {crate::ScalarBits, elliptic_curve::group::ff::PrimeFieldBits};
 
 #[cfg(feature = "serde")]
@@ -143,7 +143,7 @@ impl Scalar {
             return CtOption::new(Self::ZERO, Choice::from(0));
         }
 
-        let res = crate::succinct::call_inv_hook(&self.to_bytes(), ORDER_HEX);
+        let res = crate::call_inv_hook(&self.to_bytes(), ORDER_HEX);
         let res = FieldBytes::from_slice(res.as_slice());
         let res = Scalar::from_repr(*res).unwrap();
 
@@ -305,7 +305,7 @@ impl Field for Scalar {
         #[allow(non_snake_case)]
         let NQR: Scalar = Scalar::from_u128(7);
 
-        let (status, result) = crate::succinct::call_sqrt_hook(&self.to_bytes(), ORDER_HEX, NQR.to_bytes().as_slice());
+        let (status, result) = crate::call_sqrt_hook(&self.to_bytes(), ORDER_HEX, NQR.to_bytes().as_slice());
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Scalar::from_repr(*result).unwrap();
 
@@ -356,7 +356,7 @@ impl PrimeField for Scalar {
     }
 }
 
-#[cfg(feature = "bits")]
+#[cfg(all(not(target_os = "zkvm"), feature = "bits"))]
 impl PrimeFieldBits for Scalar {
     #[cfg(target_pointer_width = "32")]
     type ReprBits = [u32; 8];
@@ -551,8 +551,14 @@ impl From<&Scalar> for ScalarPrimitive<NistP256> {
     }
 }
 
+// Note: Youre probably not using secret keys in the VM. so this should be fine.
 impl From<&SecretKey> for Scalar {
+    #[allow(unused_variables)]
     fn from(secret_key: &SecretKey) -> Scalar {
+        #[cfg(target_os = "zkvm")]
+        unimplemented!();
+
+        #[cfg(not(target_os = "zkvm"))]
         *secret_key.to_nonzero_scalar()
     }
 }
@@ -569,7 +575,7 @@ impl From<&Scalar> for U256 {
     }
 }
 
-#[cfg(feature = "bits")]
+#[cfg(all(not(target_os = "zkvm"), feature = "bits"))]
 impl From<&Scalar> for ScalarBits {
     fn from(scalar: &Scalar) -> ScalarBits {
         scalar.0.to_words().into()

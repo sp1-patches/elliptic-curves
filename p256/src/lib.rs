@@ -41,7 +41,7 @@ pub mod test_vectors;
 pub use elliptic_curve::{self, bigint::U256, consts::U32};
 
 #[cfg(feature = "arithmetic")]
-pub use arithmetic::{scalar::Scalar, AffinePoint, ProjectivePoint};
+pub use arithmetic::{Scalar, AffinePoint, ProjectivePoint};
 
 #[cfg(feature = "expose-field")]
 pub use arithmetic::field::FieldElement;
@@ -170,6 +170,7 @@ pub type SecretKey = elliptic_curve::SecretKey<NistP256>;
 impl elliptic_curve::sec1::ValidatePublicKey for NistP256 {}
 
 /// Bit representation of a NIST P-256 scalar field element.
+#[cfg(not(target_os = "zkvm"))]
 #[cfg(feature = "bits")]
 pub type ScalarBits = elliptic_curve::scalar::ScalarBits<NistP256>;
 
@@ -183,8 +184,64 @@ impl elliptic_curve::VoprfParameters for NistP256 {
 }
 
 #[cfg(target_os = "zkvm")]
-#[macro_use]
 extern crate alloc;
 
 #[cfg(target_os = "zkvm")]
-mod succinct;
+use alloc::vec::Vec;
+
+/// Call the sp1 sqrt hook.
+///
+/// This hook takes in a field element and returns the square root of the element (with respect to the modulus).
+///
+/// If the element is not a quadratic residue, it returns the square root of the product of
+/// the element and the nqr.
+///
+/// - `x`: The field element to square root.
+/// - `modulus`: The modulus to square root with respect to.
+/// - `nqr`: The non-quadratic residue wrt the modulus.
+#[cfg(target_os = "zkvm")]
+pub(crate) fn call_sqrt_hook(x: &[u8], modulus: &'static str, nqr: &[u8]) -> (u8, Vec<u8>) {
+    sp1_lib::unconstrained! {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(&32_u32.to_be_bytes());
+        buf.extend_from_slice(x);
+        buf.extend_from_slice(&hex::decode(modulus).unwrap());
+        buf.extend_from_slice(nqr);
+
+        sp1_lib::io::write(
+            sp1_lib::io::FD_FP_SQRT,
+            buf.as_slice()
+        );
+    }
+
+    let status: u8 = sp1_lib::io::read_vec().first().copied().expect("sqrt hook should have a status");
+    let result = sp1_lib::io::read_vec();
+
+    (status, result)
+}
+
+/// Call the sp1 inverse hook.
+///
+/// This hook takes in a field element and returns the inverse of the element (with respect to the modulus).
+///
+/// - `x`: The field element to inverse.
+/// - `modulus`: The modulus to inverse with respect to.
+#[cfg(target_os = "zkvm")]
+pub(crate) fn call_inv_hook(x: &[u8], modulus: &'static str) -> Vec<u8> {
+    sp1_lib::unconstrained! {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(&32_u32.to_be_bytes());
+        buf.extend_from_slice(x);
+        buf.extend_from_slice(&hex::decode(modulus).unwrap());
+
+        sp1_lib::io::write(sp1_lib::io::FD_FP_INV, buf.as_slice());
+    }
+
+    sp1_lib::io::read_vec()
+}
+
+#[cfg(all(target_os = "zkvm", feature = "bits"))]
+compile_error!("The `bits` feature is not supported on the zkvm");
+
+#[cfg(all(target_os = "zkvm", feature = "hash2curve"))]
+compile_error!("The `hash2curve` feature is not supported on the zkvm");

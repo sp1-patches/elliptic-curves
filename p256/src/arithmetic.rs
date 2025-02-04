@@ -5,25 +5,33 @@
 //! [NIST SP 800-186]: https://csrc.nist.gov/publications/detail/sp/800-186/final
 
 pub(crate) mod field;
-#[cfg(feature = "hash2curve")]
+
+#[cfg(all(not(target_os = "zkvm"), feature = "hash2curve"))]
 mod hash2curve;
+
 pub(crate) mod scalar;
 pub(crate) mod util;
 
-use self::{field::FieldElement, scalar::Scalar};
+use self::field::FieldElement;
 use crate::NistP256;
-use elliptic_curve::{CurveArithmetic, PrimeCurveArithmetic};
-use primeorder::{point_arithmetic, PrimeCurveParams};
+
+#[cfg(not(target_os = "zkvm"))]
+use {
+    elliptic_curve::PrimeCurveArithmetic,
+    primeorder::{point_arithmetic, PrimeCurveParams},
+};
+
+use elliptic_curve::CurveArithmetic;
 
 #[cfg(not(target_os = "zkvm"))]
 mod native_types {
-    use super::*;
-
     /// Elliptic curve point in affine coordinates.
     pub type AffinePoint = primeorder::AffinePoint<NistP256>;
 
     /// Elliptic curve point in projective coordinates.
     pub type ProjectivePoint = primeorder::ProjectivePoint<NistP256>;
+
+    pub type Scalar = crate::arithmetic::scalar::Scalar;
 }
 
 #[cfg(not(target_os = "zkvm"))]
@@ -31,15 +39,45 @@ pub use native_types::*;
 
 #[cfg(target_os = "zkvm")]
 mod succinct_types {
+    use super::{NistP256, FieldElement};
+    use elliptic_curve::{FieldBytes, subtle::CtOption};
+
+    impl sp1_lib::ecdsa::ECDSACurve for NistP256 {
+        // a = -3
+        const EQUATION_A: FieldElement = FieldElement::neg(&FieldElement::from_u64(3));
+
+        const EQUATION_B: FieldElement =
+            FieldElement::from_hex("5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b");
+
+        type FieldElement = FieldElement;
+
+        type ScalarImpl = crate::arithmetic::scalar::Scalar;
+
+        type SP1AffinePoint = sp1_lib::secp256r1::Secp256r1Point;
+    }
+
+    impl sp1_lib::ecdsa::Field<NistP256> for FieldElement {
+        fn from_bytes(bytes: &FieldBytes<NistP256>) -> CtOption<Self> {
+            FieldElement::from_bytes(bytes)
+        }
+
+        fn to_bytes(&self) -> FieldBytes<NistP256> {
+            FieldElement::to_bytes(*self)
+        }
+    }
+
     /// Elliptic curve point in affine coordinates.
     ///
     /// For use inside the SP1 zkvm.
-    pub type AffinePoint = crate::succinct::Sp1AffinePoint;
+    pub type AffinePoint = sp1_lib::ecdsa::AffinePoint<NistP256>;
 
     /// Elliptic curve point in projective coordinates.
     /// 
     /// For use inside the SP1 zkvm.
-    pub type ProjectivePoint = crate::succinct::Sp1ProjectivePoint;
+    pub type ProjectivePoint = sp1_lib::ecdsa::ProjectivePoint<NistP256>;
+
+    /// The actual scalar type used in the SP1 zkvm.
+    pub type Scalar = sp1_lib::ecdsa::Scalar<NistP256>;
 }
 
 #[cfg(target_os = "zkvm")]
