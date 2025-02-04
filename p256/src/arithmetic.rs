@@ -63,8 +63,8 @@ mod succinct_types {
             FieldElement::from_bytes(bytes)
         }
 
-        fn to_bytes(&self) -> FieldBytes<NistP256> {
-            FieldElement::to_bytes(*self)
+        fn to_bytes(self) -> FieldBytes<NistP256> {
+            FieldElement::to_bytes(self)
         }
     }
 
