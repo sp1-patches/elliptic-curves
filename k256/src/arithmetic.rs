@@ -57,6 +57,10 @@ mod zkvm {
             // internally calls `normalize`
             FieldElement::to_bytes(self)
         }
+
+        fn normalize(self) -> Self {
+            self.normalize()
+        }
     }
 }
 
