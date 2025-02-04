@@ -30,7 +30,7 @@ sha2 = { version = "0.10", optional = true, default-features = false }
 signature = { version = "2", optional = true }
 
 [target.'cfg(all(target_os = "zkvm", target_vendor = "succinct"))'.dependencies]
-sp1-lib = "4.0.0"
+sp1-lib = { git = "https://github.com/succinctlabs/sp1.git", branch = "n/fp_ops_hook", features = ["ecdsa"] }
 hex = "=0.4"
 # TODO(n): remove this for release
 getrandom = { version = "0.2.8", features = ["custom"] }

@@ -183,7 +183,7 @@ impl Scalar {
             return CtOption::new(Self::ZERO, 0.into());
         }
 
-        let result = crate::succinct::call_inv_hook(self.to_bytes().as_slice(), Self::MODULUS);
+        let result = crate::call_inv_hook(self.to_bytes().as_slice(), Self::MODULUS);
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Self::from_repr(*result).unwrap();
 
@@ -323,7 +323,7 @@ impl Field for Scalar {
         #[allow(non_snake_case)]
         let NQR: Scalar = Scalar::from_u128(5);
 
-        let (status, result) = crate::succinct::call_sqrt_hook(self.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
+        let (status, result) = crate::call_sqrt_hook(self.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Self::from_repr(*result).unwrap();
 
@@ -386,7 +386,7 @@ impl PrimeField for Scalar {
     }
 }
 
-#[cfg(feature = "bits")]
+#[cfg(all(feature = "bits", not(target_os = "zkvm")))]
 impl PrimeFieldBits for Scalar {
     #[cfg(target_pointer_width = "32")]
     type ReprBits = [u32; 8];
@@ -778,7 +778,7 @@ impl<'a> Product<&'a Scalar> for Scalar {
     }
 }
 
-#[cfg(feature = "bits")]
+#[cfg(all(feature = "bits", not(target_os = "zkvm")))]
 impl From<&Scalar> for ScalarBits {
     fn from(scalar: &Scalar) -> ScalarBits {
         scalar.0.to_words().into()

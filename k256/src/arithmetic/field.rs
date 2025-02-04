@@ -252,7 +252,7 @@ impl FieldElement {
         /// 3 is a NQR of the secp256k1 base field.
         const NQR: FieldElement = FieldElement::from_u64(3);
 
-        let (status, result) = crate::succinct::call_sqrt_hook(value.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
+        let (status, result) = crate::call_sqrt_hook(value.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Self::from_repr(*result).unwrap();
 
@@ -272,7 +272,7 @@ impl FieldElement {
             return CtOption::new(Self::ZERO, 0.into());
         }
 
-        let result = crate::succinct::call_inv_hook(self.to_bytes().as_slice(), Self::MODULUS);
+        let result = crate::call_inv_hook(self.to_bytes().as_slice(), Self::MODULUS);
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Self::from_repr(*result).unwrap();
 

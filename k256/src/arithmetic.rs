@@ -3,7 +3,7 @@
 #[cfg(not(target_os = "zkvm"))]
 pub(crate) mod affine;
 mod field;
-#[cfg(feature = "hash2curve")]
+#[cfg(all(feature = "hash2curve", not(target_os = "zkvm")))]
 mod hash2curve;
 #[cfg(not(target_os = "zkvm"))]
 mod mul;
@@ -20,23 +20,53 @@ pub use field::FieldElement;
 pub use self::{affine::AffinePoint, projective::ProjectivePoint, scalar::Scalar};
 
 #[cfg(target_os = "zkvm")]
-pub use {
-    crate::succinct::Sp1AffinePoint as AffinePoint,
-    crate::succinct::Sp1ProjectivePoint as ProjectivePoint,
-    scalar::Scalar,
-};
+mod zkvm {
+    use elliptic_curve::{FieldBytes, subtle::CtOption};
+    use super::{Secp256k1, FieldElement};
 
-use crate::Secp256k1;
-use elliptic_curve::CurveArithmetic;
+    /// SP1 AffinePoint
+    pub type AffinePoint = sp1_lib::ecdsa::AffinePoint<Secp256k1>;
+    /// SP1 ProjectivePoint
+    pub type ProjectivePoint = sp1_lib::ecdsa::ProjectivePoint<Secp256k1>;
+    /// SP1 Scalar
+    pub type Scalar = sp1_lib::ecdsa::Scalar<Secp256k1>;
 
-#[cfg(not(target_os = "zkvm"))]
-impl CurveArithmetic for Secp256k1 {
-    type AffinePoint = AffinePoint;
-    type ProjectivePoint = ProjectivePoint;
-    type Scalar = Scalar;
+    impl sp1_lib::ecdsa::ECDSACurve for Secp256k1 {
+        type FieldElement = FieldElement;
+        type ScalarImpl = crate::arithmetic::scalar::Scalar;
+        type SP1AffinePoint = sp1_lib::secp256k1::Secp256k1Point;
+
+        /// a = 0
+        const EQUATION_A: FieldElement = FieldElement::from_bytes_unchecked(&[
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+        ]);
+
+        const EQUATION_B: FieldElement = super::CURVE_EQUATION_B;  
+    }
+
+    impl sp1_lib::ecdsa::Field<Secp256k1> for FieldElement {
+        fn from_bytes(bytes: &FieldBytes<Secp256k1>) -> CtOption<Self> {
+            // Only parses canonical form
+            Self::from_bytes(bytes)
+        }
+
+        fn to_bytes(self) -> FieldBytes<Secp256k1> {
+            // internally calls `normalize`
+            FieldElement::to_bytes(self)
+        }
+    }
 }
 
 #[cfg(target_os = "zkvm")]
+pub use zkvm::{AffinePoint, ProjectivePoint, Scalar};
+
+use crate::Secp256k1;
+
+use elliptic_curve::CurveArithmetic;
+
 impl CurveArithmetic for Secp256k1 {
     type AffinePoint = AffinePoint;
     type ProjectivePoint = ProjectivePoint;

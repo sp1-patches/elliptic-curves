@@ -9,7 +9,7 @@ use elliptic_curve::{
     ops::Reduce,
     rand_core::CryptoRngCore,
     subtle::ConditionallySelectable,
-    zeroize::{Zeroize, ZeroizeOnDrop}, Group,
+    zeroize::{Zeroize, ZeroizeOnDrop}, Group, PrimeField
 };
 use sha2::{Digest, Sha256};
 use signature::{
@@ -49,7 +49,7 @@ impl SigningKey {
 
     /// Serialize as bytes.
     pub fn to_bytes(&self) -> FieldBytes {
-        self.secret_key.to_bytes()
+        self.secret_key.to_repr()
     }
 
     /// Get the [`VerifyingKey`] that corresponds to this signing key.
@@ -97,7 +97,7 @@ impl SigningKey {
     pub fn sign_raw(&self, msg: &[u8], aux_rand: &[u8; 32]) -> Result<Signature> {
         let mut t = tagged_hash(AUX_TAG).chain_update(aux_rand).finalize();
 
-        for (a, b) in t.iter_mut().zip(self.secret_key.to_bytes().iter()) {
+        for (a, b) in t.iter_mut().zip(self.secret_key.to_repr().iter()) {
             *a ^= b
         }
 
