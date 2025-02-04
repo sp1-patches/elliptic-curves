@@ -13,8 +13,5 @@ members = [
     "sm2"
 ]
 
-[patch.crates-io]
-sp1-lib = { git = "https://github.com/succinctlabs/sp1.git", branch = "n/fp_ops_hook" }
-
 [profile.dev]
 opt-level = 2
