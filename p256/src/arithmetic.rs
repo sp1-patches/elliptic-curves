@@ -25,6 +25,8 @@ use elliptic_curve::CurveArithmetic;
 
 #[cfg(not(target_os = "zkvm"))]
 mod native_types {
+    use super::*;
+
     /// Elliptic curve point in affine coordinates.
     pub type AffinePoint = primeorder::AffinePoint<NistP256>;
 

@@ -1,5 +1,5 @@
 use super::FieldElement;
-use crate::{AffinePoint, FieldBytes, NistP256, ProjectivePoint, Scalar};
+use crate::{AffinePoint, FieldBytes, NistP256, ProjectivePoint, arithmetic::scalar::Scalar};
 use elliptic_curve::{
     bigint::{ArrayEncoding, U256},
     consts::U48,
@@ -89,7 +89,7 @@ impl FromOkm for Scalar {
 
         let mut d1 = GenericArray::default();
         d1[8..].copy_from_slice(&data[24..]);
-        let d1 = Scalar(U256::from_be_byte_array(d1));
+        let d1 =  Scalar(U256::from_be_byte_array(d1));
 
         d0 * F_2_192 + d1
     }

@@ -19,6 +19,9 @@ use elliptic_curve::{
     subtle::{Choice, ConstantTimeEq, CtOption},
 };
 
+#[cfg(not(target_os = "zkvm"))]
+use core::ops::Mul;
+
 /// Field modulus serialized as hex.
 /// p = 2^{224}(2^{32} − 1) + 2^{192} + 2^{96} − 1
 const MODULUS_HEX: &str = "ffffffff00000001000000000000000000000000ffffffffffffffffffffffff";
