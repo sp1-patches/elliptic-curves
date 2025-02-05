@@ -66,6 +66,11 @@ mod succinct_types {
         fn to_bytes(self) -> FieldBytes<NistP256> {
             FieldElement::to_bytes(self)
         }
+
+        #[inline]
+        fn normalize(self) -> Self {
+            self
+        }
     }
 
     /// Elliptic curve point in affine coordinates.
