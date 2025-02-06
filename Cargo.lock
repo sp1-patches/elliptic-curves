@@ -61,7 +61,7 @@ dependencies = [
  "primeorder",
  "proptest",
  "rand_core",
- "rfc6979",
+ "rfc6979 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "signature",
 ]
 
@@ -132,7 +132,7 @@ dependencies = [
 name = "bp256"
 version = "0.6.1"
 dependencies = [
- "ecdsa",
+ "ecdsa 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "elliptic-curve",
  "primeorder",
  "sha2",
@@ -142,7 +142,7 @@ dependencies = [
 name = "bp384"
 version = "0.6.1"
 dependencies = [
- "ecdsa",
+ "ecdsa 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "elliptic-curve",
  "primeorder",
  "sha2",
@@ -379,7 +379,21 @@ dependencies = [
  "der",
  "digest",
  "elliptic-curve",
- "rfc6979",
+ "rfc6979 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serdect",
+ "signature",
+ "spki",
+]
+
+[[package]]
+name = "ecdsa"
+version = "0.16.9"
+source = "git+https://github.com/sp1-patches/signatures.git?tag=patch-16.9-sp1-4.1.0#5e71deeacc5b62f9cb79f772a94c9f6f36072bfe"
+dependencies = [
+ "der",
+ "digest",
+ "elliptic-curve",
+ "rfc6979 0.4.0 (git+https://github.com/sp1-patches/signatures.git?tag=patch-16.9-sp1-4.1.0)",
  "serdect",
  "signature",
  "spki",
@@ -631,7 +645,7 @@ dependencies = [
  "blobby",
  "cfg-if",
  "criterion",
- "ecdsa",
+ "ecdsa 0.16.9 (git+https://github.com/sp1-patches/signatures.git?tag=patch-16.9-sp1-4.1.0)",
  "elliptic-curve",
  "getrandom",
  "hex",
@@ -764,7 +778,7 @@ checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
 name = "p192"
 version = "0.13.0"
 dependencies = [
- "ecdsa",
+ "ecdsa 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "elliptic-curve",
  "hex-literal",
  "primeorder",
@@ -777,7 +791,7 @@ name = "p224"
 version = "0.13.2"
 dependencies = [
  "blobby",
- "ecdsa",
+ "ecdsa 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "elliptic-curve",
  "hex-literal",
  "primeorder",
@@ -792,7 +806,7 @@ version = "0.13.2"
 dependencies = [
  "blobby",
  "criterion",
- "ecdsa",
+ "ecdsa 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "elliptic-curve",
  "hex-literal",
  "primeorder",
@@ -920,7 +934,7 @@ version = "0.13.0"
 dependencies = [
  "blobby",
  "criterion",
- "ecdsa",
+ "ecdsa 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "elliptic-curve",
  "hex-literal",
  "primeorder",
@@ -936,7 +950,7 @@ version = "0.13.3"
 dependencies = [
  "base16ct",
  "blobby",
- "ecdsa",
+ "ecdsa 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "elliptic-curve",
  "hex-literal",
  "primeorder",
@@ -1171,6 +1185,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rfc6979"
+version = "0.4.0"
+source = "git+https://github.com/sp1-patches/signatures.git?tag=patch-16.9-sp1-4.1.0#5e71deeacc5b62f9cb79f772a94c9f6f36072bfe"
+dependencies = [
+ "hmac",
+ "subtle",
+]
+
+[[package]]
 name = "rustix"
 version = "0.36.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1327,7 +1350,7 @@ dependencies = [
  "primeorder",
  "proptest",
  "rand_core",
- "rfc6979",
+ "rfc6979 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serdect",
  "signature",
  "sm3",
