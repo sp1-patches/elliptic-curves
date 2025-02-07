@@ -143,6 +143,7 @@
 //! ```
 
 pub use ecdsa_core::{
+    self,
     signature::{self, Error},
     RecoveryId,
 };
