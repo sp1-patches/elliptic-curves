@@ -41,7 +41,7 @@ pub use native_types::*;
 
 #[cfg(target_os = "zkvm")]
 mod succinct_types {
-    use super::{NistP256, FieldElement};
+    use super::{NistP256, FieldElement, scalar};
     use elliptic_curve::{FieldBytes, subtle::CtOption};
 
     impl sp1_lib::ecdsa::ECDSACurve for NistP256 {
@@ -52,8 +52,6 @@ mod succinct_types {
             FieldElement::from_hex("5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b");
 
         type FieldElement = FieldElement;
-
-        type ScalarImpl = crate::arithmetic::scalar::Scalar;
 
         type SP1AffinePoint = sp1_lib::secp256r1::Secp256r1Point;
     }
@@ -84,7 +82,7 @@ mod succinct_types {
     pub type ProjectivePoint = sp1_lib::ecdsa::ProjectivePoint<NistP256>;
 
     /// The actual scalar type used in the SP1 zkvm.
-    pub type Scalar = sp1_lib::ecdsa::Scalar<NistP256>;
+    pub type Scalar = scalar::Scalar;
 }
 
 #[cfg(target_os = "zkvm")]
