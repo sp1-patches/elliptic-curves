@@ -22,18 +22,17 @@ pub use self::{affine::AffinePoint, projective::ProjectivePoint, scalar::Scalar}
 #[cfg(target_os = "zkvm")]
 mod zkvm {
     use elliptic_curve::{FieldBytes, subtle::CtOption};
-    use super::{Secp256k1, FieldElement};
+    use super::{Secp256k1, FieldElement, scalar};
 
     /// SP1 AffinePoint
     pub type AffinePoint = sp1_lib::ecdsa::AffinePoint<Secp256k1>;
     /// SP1 ProjectivePoint
     pub type ProjectivePoint = sp1_lib::ecdsa::ProjectivePoint<Secp256k1>;
     /// SP1 Scalar
-    pub type Scalar = sp1_lib::ecdsa::Scalar<Secp256k1>;
+    pub type Scalar = scalar::Scalar;
 
     impl sp1_lib::ecdsa::ECDSACurve for Secp256k1 {
         type FieldElement = FieldElement;
-        type ScalarImpl = crate::arithmetic::scalar::Scalar;
         type SP1AffinePoint = sp1_lib::secp256k1::Secp256k1Point;
 
         /// a = 0

@@ -1289,7 +1289,7 @@ dependencies = [
 [[package]]
 name = "sp1-lib"
 version = "4.0.1"
-source = "git+https://github.com/succinctlabs/sp1.git?branch=n/fp_ops_hook#05aecb6a15aaf2dfa953f96cfe3036591dbd1474"
+source = "git+https://github.com/succinctlabs/sp1.git?branch=n/fp_ops_hook#a68ca72957c46cadfc368d8364ef448870a5b7e0"
 dependencies = [
  "bincode",
  "elliptic-curve",
@@ -1300,7 +1300,7 @@ dependencies = [
 [[package]]
 name = "sp1-primitives"
 version = "4.0.1"
-source = "git+https://github.com/succinctlabs/sp1.git?branch=n/fp_ops_hook#05aecb6a15aaf2dfa953f96cfe3036591dbd1474"
+source = "git+https://github.com/succinctlabs/sp1.git?branch=n/fp_ops_hook#a68ca72957c46cadfc368d8364ef448870a5b7e0"
 dependencies = [
  "bincode",
  "hex",
