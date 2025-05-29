@@ -611,7 +611,6 @@ dependencies = [
  "criterion",
  "ecdsa 0.16.9 (git+https://github.com/sp1-patches/signatures.git?tag=patch-16.9-sp1-4.1.0)",
  "elliptic-curve",
- "getrandom 0.2.15",
  "hex",
  "hex-literal",
  "num-bigint",
@@ -1288,8 +1287,9 @@ dependencies = [
 
 [[package]]
 name = "sp1-lib"
-version = "4.0.1"
-source = "git+https://github.com/succinctlabs/sp1.git?branch=n/fp_ops_hook#a68ca72957c46cadfc368d8364ef448870a5b7e0"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec954a4567f51269fd10c304a8907862d4d2069aa2b479a18d0f063f29a6df8f"
 dependencies = [
  "bincode",
  "elliptic-curve",
@@ -1299,8 +1299,9 @@ dependencies = [
 
 [[package]]
 name = "sp1-primitives"
-version = "4.0.1"
-source = "git+https://github.com/succinctlabs/sp1.git?branch=n/fp_ops_hook#a68ca72957c46cadfc368d8364ef448870a5b7e0"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a959284c1f0df979160dba98aa5d3d245697a5a3b9c992207afcd9e62e37732"
 dependencies = [
  "bincode",
  "hex",
