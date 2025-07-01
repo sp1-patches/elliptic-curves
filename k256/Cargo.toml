@@ -26,7 +26,8 @@ elliptic-curve = { version = "0.13.8", default-features = false, features = [
 
 # optional dependencies
 once_cell = { version = "1.19", optional = true, default-features = false }
-ecdsa-core = { git = "https://github.com/sp1-patches/signatures.git", tag = "patch-16.9-sp1-4.1.0", package = "ecdsa", optional = true, default-features = false, features = [
+# TODO(tqn) REVERT BEFORE MERGING (and fix the dev dep below too)
+ecdsa-core = { version = "0.16.9", package = "ecdsa", optional = true, default-features = false, features = [
     "der",
 ] }
 hex-literal = { version = "0.4", optional = true }
@@ -35,13 +36,13 @@ sha2 = { version = "0.10", optional = true, default-features = false }
 signature = { version = "2", optional = true }
 
 [target.'cfg(all(target_os = "zkvm", target_vendor = "succinct"))'.dependencies]
-sp1-lib = { version = "5.0.0", features = ["ecdsa"] }
+sp1-lib = { version = "6.0.0", features = ["ecdsa"] }
 hex = "=0.4"
 
 [dev-dependencies]
 blobby = "0.3"
 criterion = "0.5"
-ecdsa-core = { git = "https://github.com/sp1-patches/signatures.git", tag = "patch-16.9-sp1-4.1.0", package = "ecdsa", default-features = false, features = [
+ecdsa-core = { version = "0.16.9", package = "ecdsa", default-features = false, features = [
     "dev",
 ] }
 hex-literal = "0.4"
