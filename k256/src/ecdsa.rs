@@ -200,6 +200,8 @@ impl SignPrimitive<Secp256k1> for Scalar {
 
 #[cfg(feature = "ecdsa")]
 impl VerifyPrimitive<Secp256k1> for AffinePoint {
+    const HIGH_S_ALLOWED: bool = false;
+
     fn verify_prehashed(&self, z: &FieldBytes, sig: &Signature) -> Result<(), Error> {
         if sig.s().is_high().into() {
             return Err(Error::new());

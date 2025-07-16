@@ -27,7 +27,12 @@ elliptic-curve = { version = "0.13.8", default-features = false, features = [
 # optional dependencies
 once_cell = { version = "1.19", optional = true, default-features = false }
 # TODO(tqn) REVERT BEFORE MERGING (and fix the dev dep below too)
-ecdsa-core = { version = "0.16.9", package = "ecdsa", optional = true, default-features = false, features = [
+# ecdsa-core = { version = "0.16.9", package = "ecdsa", optional = true, default-features = false, features = [
+#     "der",
+# ] }
+
+
+ecdsa-core = { git = "https://github.com/sp1-patches/signatures", tag = "sp1-skip-verify-on-recovery", package = "ecdsa", optional = true, default-features = false, features = [
     "der",
 ] }
 hex-literal = { version = "0.4", optional = true }
@@ -42,8 +47,8 @@ hex = "=0.4"
 [dev-dependencies]
 blobby = "0.3"
 criterion = "0.5"
-ecdsa-core = { version = "0.16.9", package = "ecdsa", default-features = false, features = [
-    "dev",
+ecdsa-core = { git = "https://github.com/sp1-patches/signatures", tag = "sp1-skip-verify-on-recovery", package = "ecdsa", default-features = false, features = [
+    "der",
 ] }
 hex-literal = "0.4"
 num-bigint = "0.4"
