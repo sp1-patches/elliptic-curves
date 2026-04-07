@@ -256,6 +256,8 @@ impl FieldElement {
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Self::from_repr(*result).unwrap();
 
+        assert!(status == 0 || status == 1);
+
         if status == 0 {
             assert!(((result * result).negate(1) + value * &NQR).normalizes_to_zero().unwrap_u8() == 1, "Sqrt hook returned invalid hint, NQR root didnt match.");
         } else {
