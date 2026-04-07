@@ -147,6 +147,8 @@ impl FieldElement {
         let result = FieldBytes::from_slice(res.as_slice());
         let result = FieldElement::from_repr(*result).unwrap();
 
+        assert!(status == 0 || status == 1);
+
         if status == 0 {
             assert!((&result * &result) == self * &NQR, "Sqrt hook returned invalid hint, NQR root didnt match.");
         } else {

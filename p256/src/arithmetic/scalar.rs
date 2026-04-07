@@ -309,6 +309,8 @@ impl Field for Scalar {
         let result = FieldBytes::from_slice(result.as_slice());
         let result = Scalar::from_repr(*result).unwrap();
 
+        assert!(status == 0 || status == 1);
+
         if status == 0 {
             assert!(result * result == *self * &NQR, "Sqrt hook returned invalid hint, NQR root didnt match.");
         } else {
