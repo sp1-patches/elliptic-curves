@@ -27,7 +27,7 @@ serdect = { version = "0.2", optional = true, default-features = false }
 sha2 = { version = "0.10", optional = true, default-features = false }
 
 [target.'cfg(all(target_os = "zkvm", target_vendor = "succinct"))'.dependencies]
-sp1-lib = { git = "https://github.com/succinctlabs/sp1", branch = "tamir/no_std_zkvm", default-features = false, features = ["ecdsa"] }
+sp1-lib = { git = "https://github.com/succinctlabs/sp1", branch = "main", default-features = false, features = ["ecdsa"] }
 hex = "=0.4"
 
 [dev-dependencies]
