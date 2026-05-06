@@ -253,15 +253,25 @@ impl FieldElement {
         const NQR: FieldElement = FieldElement::from_u64(3);
 
         let (status, result) = crate::call_sqrt_hook(value.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
+        if result.len() != core::mem::size_of::<FieldBytes>() {
+            crate::halt_invalid_hint();
+        }
         let result = FieldBytes::from_slice(result.as_slice());
-        let result = Self::from_repr(*result).unwrap();
+        let result = match Option::<Self>::from(Self::from_repr(*result)) {
+            Some(v) => v,
+            None => crate::halt_invalid_hint(),
+        };
 
-        assert!(status == 0 || status == 1);
+        if status != 0 && status != 1 {
+            crate::halt_invalid_hint();
+        }
 
         if status == 0 {
-            assert!(((result * result).negate(1) + value * &NQR).normalizes_to_zero().unwrap_u8() == 1, "Sqrt hook returned invalid hint, NQR root didnt match.");
-        } else {
-            assert!(((result * result).negate(1) + value).normalizes_to_zero().unwrap_u8() == 1, "Sqrt hook returned invalid hint, sqrt is invalid.");
+            if ((result * result).negate(1) + value * &NQR).normalizes_to_zero().unwrap_u8() != 1 {
+                crate::halt_invalid_hint();
+            }
+        } else if ((result * result).negate(1) + value).normalizes_to_zero().unwrap_u8() != 1 {
+            crate::halt_invalid_hint();
         }
 
         CtOption::new(result, Choice::from(status))
@@ -275,10 +285,18 @@ impl FieldElement {
         }
 
         let result = crate::call_inv_hook(self.to_bytes().as_slice(), Self::MODULUS);
+        if result.len() != core::mem::size_of::<FieldBytes>() {
+            crate::halt_invalid_hint();
+        }
         let result = FieldBytes::from_slice(result.as_slice());
-        let result = Self::from_repr(*result).unwrap();
+        let result = match Option::<Self>::from(Self::from_repr(*result)) {
+            Some(v) => v,
+            None => crate::halt_invalid_hint(),
+        };
 
-        assert!(((result * value).negate(1) + Self::ONE).normalizes_to_zero().unwrap_u8() == 1, "Inv hook returned invalid hint, invert is invalid.");
+        if ((result * value).negate(1) + Self::ONE).normalizes_to_zero().unwrap_u8() != 1 {
+            crate::halt_invalid_hint();
+        }
 
         CtOption::new(result, 1.into())
     }
