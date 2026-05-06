@@ -185,16 +185,16 @@ impl Scalar {
 
         let result = crate::call_inv_hook(self.to_bytes().as_slice(), Self::MODULUS);
         if result.len() != core::mem::size_of::<FieldBytes>() {
-            crate::halt_invalid_hint();
+            sp1_lib::halt_invalid_hint();
         }
         let result = FieldBytes::from_slice(result.as_slice());
         let result = match Option::<Self>::from(Self::from_repr(*result)) {
             Some(v) => v,
-            None => crate::halt_invalid_hint(),
+            None => sp1_lib::halt_invalid_hint(),
         };
 
         if result * *self != Self::ONE {
-            crate::halt_invalid_hint();
+            sp1_lib::halt_invalid_hint();
         }
 
         CtOption::new(
@@ -333,24 +333,24 @@ impl Field for Scalar {
 
         let (status, result) = crate::call_sqrt_hook(self.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
         if result.len() != core::mem::size_of::<FieldBytes>() {
-            crate::halt_invalid_hint();
+            sp1_lib::halt_invalid_hint();
         }
         let result = FieldBytes::from_slice(result.as_slice());
         let result = match Option::<Self>::from(Self::from_repr(*result)) {
             Some(v) => v,
-            None => crate::halt_invalid_hint(),
+            None => sp1_lib::halt_invalid_hint(),
         };
 
         if status != 0 && status != 1 {
-            crate::halt_invalid_hint();
+            sp1_lib::halt_invalid_hint();
         }
 
         if status == 0 {
             if result * result != self * &NQR {
-                crate::halt_invalid_hint();
+                sp1_lib::halt_invalid_hint();
             }
         } else if result * result != *self {
-            crate::halt_invalid_hint();
+            sp1_lib::halt_invalid_hint();
         }
 
         CtOption::new(result, Choice::from(status))

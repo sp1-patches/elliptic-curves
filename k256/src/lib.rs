@@ -161,14 +161,6 @@ pub type ScalarBits = elliptic_curve::scalar::ScalarBits<Secp256k1>;
 #[cfg(target_os = "zkvm")]
 use alloc::vec::Vec;
 
-/// On invalid prover hints, halt the zkVM with exit code 3 instead of panicking.
-/// This prevents a malicious prover from forging a regular `panic` (exit code 1).
-#[cfg(target_os = "zkvm")]
-#[inline(never)]
-pub(crate) fn halt_invalid_hint() -> ! {
-    unsafe { sp1_lib::syscall_halt(3) }
-}
-
 /// Call the sp1 sqrt hook.
 ///
 /// This hook takes in a field element and returns the square root of the element (with respect to the modulus).

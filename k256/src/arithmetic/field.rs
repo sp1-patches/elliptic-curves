@@ -254,24 +254,24 @@ impl FieldElement {
 
         let (status, result) = crate::call_sqrt_hook(value.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
         if result.len() != core::mem::size_of::<FieldBytes>() {
-            crate::halt_invalid_hint();
+            sp1_lib::halt_invalid_hint();
         }
         let result = FieldBytes::from_slice(result.as_slice());
         let result = match Option::<Self>::from(Self::from_repr(*result)) {
             Some(v) => v,
-            None => crate::halt_invalid_hint(),
+            None => sp1_lib::halt_invalid_hint(),
         };
 
         if status != 0 && status != 1 {
-            crate::halt_invalid_hint();
+            sp1_lib::halt_invalid_hint();
         }
 
         if status == 0 {
             if ((result * result).negate(1) + value * &NQR).normalizes_to_zero().unwrap_u8() != 1 {
-                crate::halt_invalid_hint();
+                sp1_lib::halt_invalid_hint();
             }
         } else if ((result * result).negate(1) + value).normalizes_to_zero().unwrap_u8() != 1 {
-            crate::halt_invalid_hint();
+            sp1_lib::halt_invalid_hint();
         }
 
         CtOption::new(result, Choice::from(status))
@@ -286,16 +286,16 @@ impl FieldElement {
 
         let result = crate::call_inv_hook(self.to_bytes().as_slice(), Self::MODULUS);
         if result.len() != core::mem::size_of::<FieldBytes>() {
-            crate::halt_invalid_hint();
+            sp1_lib::halt_invalid_hint();
         }
         let result = FieldBytes::from_slice(result.as_slice());
         let result = match Option::<Self>::from(Self::from_repr(*result)) {
             Some(v) => v,
-            None => crate::halt_invalid_hint(),
+            None => sp1_lib::halt_invalid_hint(),
         };
 
         if ((result * value).negate(1) + Self::ONE).normalizes_to_zero().unwrap_u8() != 1 {
-            crate::halt_invalid_hint();
+            sp1_lib::halt_invalid_hint();
         }
 
         CtOption::new(result, 1.into())
