@@ -144,10 +144,18 @@ impl Scalar {
         }
 
         let res = crate::call_inv_hook(&self.to_bytes(), ORDER_HEX);
+        if res.len() != core::mem::size_of::<FieldBytes>() {
+            crate::halt_invalid_hint();
+        }
         let res = FieldBytes::from_slice(res.as_slice());
-        let res = Scalar::from_repr(*res).unwrap();
+        let res = match Option::<Scalar>::from(Scalar::from_repr(*res)) {
+            Some(v) => v,
+            None => crate::halt_invalid_hint(),
+        };
 
-        assert!(&res * self == Self::ONE, "Inv hook returned invalid hint, inv is invalid.");
+        if &res * self != Self::ONE {
+            crate::halt_invalid_hint();
+        }
 
         CtOption::new(res, Choice::from(1))
     }
@@ -306,15 +314,25 @@ impl Field for Scalar {
         let NQR: Scalar = Scalar::from_u128(7);
 
         let (status, result) = crate::call_sqrt_hook(&self.to_bytes(), ORDER_HEX, NQR.to_bytes().as_slice());
+        if result.len() != core::mem::size_of::<FieldBytes>() {
+            crate::halt_invalid_hint();
+        }
         let result = FieldBytes::from_slice(result.as_slice());
-        let result = Scalar::from_repr(*result).unwrap();
+        let result = match Option::<Scalar>::from(Scalar::from_repr(*result)) {
+            Some(v) => v,
+            None => crate::halt_invalid_hint(),
+        };
 
-        assert!(status == 0 || status == 1);
+        if status != 0 && status != 1 {
+            crate::halt_invalid_hint();
+        }
 
         if status == 0 {
-            assert!(result * result == *self * &NQR, "Sqrt hook returned invalid hint, NQR root didnt match.");
-        } else {
-            assert!(result * result == *self, "Sqrt hook returned invalid hint, sqrt is invalid.");
+            if result * result != *self * &NQR {
+                crate::halt_invalid_hint();
+            }
+        } else if result * result != *self {
+            crate::halt_invalid_hint();
         }
 
         CtOption::new(result, Choice::from(status))
