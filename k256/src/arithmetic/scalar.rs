@@ -185,16 +185,20 @@ impl Scalar {
 
         let result = crate::call_inv_hook(self.to_bytes().as_slice(), Self::MODULUS);
         if result.len() != core::mem::size_of::<FieldBytes>() {
-            sp1_lib::halt_invalid_hint();
+            sp1_lib::invalid_hint!(
+                "k256 scalar inverse: hint length is {}, expected {}",
+                result.len(),
+                core::mem::size_of::<FieldBytes>()
+            );
         }
         let result = FieldBytes::from_slice(result.as_slice());
         let result = match Option::<Self>::from(Self::from_repr(*result)) {
             Some(v) => v,
-            None => sp1_lib::halt_invalid_hint(),
+            None => sp1_lib::invalid_hint!("k256 scalar inverse: hint is not canonical"),
         };
 
         if result * *self != Self::ONE {
-            sp1_lib::halt_invalid_hint();
+            sp1_lib::invalid_hint!("k256 scalar inverse: hint did not invert self");
         }
 
         CtOption::new(
@@ -333,24 +337,33 @@ impl Field for Scalar {
 
         let (status, result) = crate::call_sqrt_hook(self.to_bytes().as_slice(), Self::MODULUS, NQR.to_bytes().as_slice());
         if result.len() != core::mem::size_of::<FieldBytes>() {
-            sp1_lib::halt_invalid_hint();
+            sp1_lib::invalid_hint!(
+                "k256 scalar sqrt: hint length is {}, expected {}",
+                result.len(),
+                core::mem::size_of::<FieldBytes>()
+            );
         }
         let result = FieldBytes::from_slice(result.as_slice());
         let result = match Option::<Self>::from(Self::from_repr(*result)) {
             Some(v) => v,
-            None => sp1_lib::halt_invalid_hint(),
+            None => sp1_lib::invalid_hint!("k256 scalar sqrt: root hint is not canonical"),
         };
 
         if status != 0 && status != 1 {
-            sp1_lib::halt_invalid_hint();
+            sp1_lib::invalid_hint!(
+                "k256 scalar sqrt: status hint must be 0 or 1, got {}",
+                status
+            );
         }
 
         if status == 0 {
             if result * result != self * &NQR {
-                sp1_lib::halt_invalid_hint();
+                sp1_lib::invalid_hint!(
+                    "k256 scalar sqrt: NQR-root hint failed root^2 = self*nqr"
+                );
             }
         } else if result * result != *self {
-            sp1_lib::halt_invalid_hint();
+            sp1_lib::invalid_hint!("k256 scalar sqrt: root hint failed root^2 = self");
         }
 
         CtOption::new(result, Choice::from(status))
