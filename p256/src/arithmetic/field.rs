@@ -71,16 +71,20 @@ impl FieldElement {
 
         let res = crate::call_inv_hook(self.to_bytes().as_slice(), &MODULUS_HEX);
         if res.len() != core::mem::size_of::<FieldBytes>() {
-            sp1_lib::halt_invalid_hint();
+            sp1_lib::invalid_hint!(
+                "p256 field inverse: hint length is {}, expected {}",
+                res.len(),
+                core::mem::size_of::<FieldBytes>()
+            );
         }
         let result = FieldBytes::from_slice(res.as_slice());
         let result = match Option::<FieldElement>::from(FieldElement::from_repr(*result)) {
             Some(v) => v,
-            None => sp1_lib::halt_invalid_hint(),
+            None => sp1_lib::invalid_hint!("p256 field inverse: hint is not canonical"),
         };
 
         if (&result * self) != FieldElement::ONE {
-            sp1_lib::halt_invalid_hint();
+            sp1_lib::invalid_hint!("p256 field inverse: hint did not invert self");
         }
 
         CtOption::new(result, Choice::from(1))
@@ -153,24 +157,33 @@ impl FieldElement {
         let (status, res) = crate::call_sqrt_hook(self.to_bytes().as_slice(), &MODULUS_HEX, NQR.to_bytes().as_slice());
 
         if res.len() != core::mem::size_of::<FieldBytes>() {
-            sp1_lib::halt_invalid_hint();
+            sp1_lib::invalid_hint!(
+                "p256 field sqrt: hint length is {}, expected {}",
+                res.len(),
+                core::mem::size_of::<FieldBytes>()
+            );
         }
         let result = FieldBytes::from_slice(res.as_slice());
         let result = match Option::<FieldElement>::from(FieldElement::from_repr(*result)) {
             Some(v) => v,
-            None => sp1_lib::halt_invalid_hint(),
+            None => sp1_lib::invalid_hint!("p256 field sqrt: root hint is not canonical"),
         };
 
         if status != 0 && status != 1 {
-            sp1_lib::halt_invalid_hint();
+            sp1_lib::invalid_hint!(
+                "p256 field sqrt: status hint must be 0 or 1, got {}",
+                status
+            );
         }
 
         if status == 0 {
             if (&result * &result) != self * &NQR {
-                sp1_lib::halt_invalid_hint();
+                sp1_lib::invalid_hint!(
+                    "p256 field sqrt: NQR-root hint failed root^2 = self*nqr"
+                );
             }
         } else if (&result * &result) != *self {
-            sp1_lib::halt_invalid_hint();
+            sp1_lib::invalid_hint!("p256 field sqrt: root hint failed root^2 = self");
         }
 
         CtOption::new(result, Choice::from(status))
